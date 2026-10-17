@@ -6,6 +6,7 @@ import type { PreparedCommitment, TelemetryPayload } from "@/types/web3";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+export const maxDuration = 30;
 
 export async function POST(request: Request): Promise<Response> {
   let body: unknown;

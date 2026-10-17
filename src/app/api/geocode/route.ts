@@ -2,6 +2,7 @@ import { searchPlaces } from "@/lib/api/nominatim";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+export const maxDuration = 30;
 
 export async function GET(request: Request): Promise<Response> {
   const query = new URL(request.url).searchParams.get("q")?.trim() ?? "";
