@@ -1,0 +1,51 @@
+{
+  "name": "hydrotrust-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Decentralized climate resilience and hydrological intelligence for the IEEE ClimateChain hackathon.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit",
+    "compile:contracts": "hardhat compile",
+    "deploy:local": "hardhat run scripts/deploy.js --network localhost"
+  },
+  "engines": {
+    "node": ">=18.18.0"
+  },
+  "dependencies": {
+    "@radix-ui/react-dialog": "1.1.2",
+    "@react-three/drei": "9.114.3",
+    "@react-three/fiber": "8.17.10",
+    "@turf/turf": "7.1.0",
+    "clsx": "2.1.1",
+    "ethers": "6.13.4",
+    "html2canvas": "1.4.1",
+    "jspdf": "2.5.2",
+    "lucide-react": "0.453.0",
+    "maplibre-gl": "4.7.1",
+    "next": "^14.2.35",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "recharts": "2.13.0",
+    "tailwind-merge": "2.5.4",
+    "three": "0.169.0",
+    "zod": "3.23.8"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-ethers": "3.0.8",
+    "@types/geojson": "7946.0.14",
+    "@types/node": "20.16.11",
+    "@types/react": "18.3.11",
+    "@types/react-dom": "18.3.1",
+    "autoprefixer": "10.4.20",
+    "eslint": "8.57.1",
+    "eslint-config-next": "^14.2.35",
+    "hardhat": "2.22.15",
+    "postcss": "8.4.47",
+    "tailwindcss": "3.4.14",
+    "typescript": "5.6.3"
+  }
+}
