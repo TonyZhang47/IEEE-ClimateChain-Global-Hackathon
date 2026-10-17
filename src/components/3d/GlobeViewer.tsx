@@ -2,9 +2,10 @@
 
 import { Stars } from "@react-three/drei";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type RefObject } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "@/components/3d/OrbitControls";
+import { BRIGHT_STARS, DELTA_HOTSPOTS, SATELLITES } from "@/lib/experience/catalog";
 
 const DAY_URL = "https://unpkg.com/three-globe@2.31.1/example/img/earth-blue-marble.jpg";
 const NIGHT_URL = "https://unpkg.com/three-globe@2.31.1/example/img/earth-night.jpg";
@@ -20,10 +21,12 @@ interface GlobeTarget {
 interface GlobeViewerProps {
   target: GlobeTarget | null;
   onArrival: () => void;
+  floodScore?: number | null;
 }
 
-export function GlobeViewer({ target, onArrival }: GlobeViewerProps) {
+export function GlobeViewer({ target, onArrival, floodScore = null }: GlobeViewerProps) {
   const [webgl, setWebgl] = useState(true);
+  const readout = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
     try {
@@ -53,18 +56,28 @@ export function GlobeViewer({ target, onArrival }: GlobeViewerProps) {
   }
 
   return (
-    <Canvas
-      camera={{ position: [2.4, 1.1, 5.8], fov: 42, near: 0.1, far: 100 }}
-      dpr={[1, 1.75]}
-      gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
-    >
-      <color attach="background" args={["#071116"]} />
-      <Scene target={target} onArrival={onArrival} />
-    </Canvas>
+    <div className="globe-stage relative h-full w-full">
+      <Canvas
+        camera={{ position: [2.4, 1.1, 5.8], fov: 42, near: 0.1, far: 200 }}
+        dpr={[1, 2]}
+        gl={{ antialias: true, alpha: false, powerPreference: "high-performance" }}
+      >
+        <color attach="background" args={["#090D16"]} />
+        <Scene target={target} onArrival={onArrival} floodScore={floodScore} readout={readout} />
+      </Canvas>
+      <p ref={readout} className="pointer-events-none absolute bottom-6 left-6 min-h-6 rounded-full border border-white/15 bg-black/30 px-3 py-1 font-mono text-[11px] text-foam backdrop-blur" />
+      <div className="globe-vignette pointer-events-none absolute inset-0" />
+    </div>
   );
 }
 
-function Scene({ target, onArrival }: GlobeViewerProps) {
+function Scene({
+  target,
+  onArrival,
+  floodScore,
+  readout,
+}: GlobeViewerProps & { readout: RefObject<HTMLParagraphElement> }) {
+  const [idle, setIdle] = useState(true);
   const [phase, setPhase] = useState<"orbit" | "flight" | "landed">(target ? "flight" : "orbit");
   const arrivalRef = useRef(onArrival);
   arrivalRef.current = onArrival;
@@ -74,6 +87,22 @@ function Scene({ target, onArrival }: GlobeViewerProps) {
     if (!targetKey) return;
     setPhase("flight");
   }, [targetKey]);
+
+  useEffect(() => {
+    let timer = window.setTimeout(() => setIdle(true), 8000);
+    const bump = () => {
+      setIdle(false);
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => setIdle(true), 8000);
+    };
+    window.addEventListener("pointerdown", bump);
+    window.addEventListener("wheel", bump, { passive: true });
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener("pointerdown", bump);
+      window.removeEventListener("wheel", bump);
+    };
+  }, []);
 
   return (
     <>
@@ -86,12 +115,18 @@ function Scene({ target, onArrival }: GlobeViewerProps) {
           arrivalRef.current();
         }}
       />
-      {phase !== "flight" ? <OrbitControls autoRotate={phase === "orbit"} /> : null}
+      {phase !== "flight" ? <OrbitControls autoRotate={phase === "orbit" || idle} /> : null}
       <Earth />
       <Clouds />
       <Atmosphere />
+      <Hotspots />
+      <Satellites />
+      <Aurora />
+      <CatalogueStars />
       {target ? <Beacon latitude={target.latitude} longitude={target.longitude} /> : null}
-      <Stars radius={80} depth={40} count={1600} factor={2.2} fade speed={0.2} />
+      {target && (floodScore ?? 0) >= 60 ? <Rain latitude={target.latitude} longitude={target.longitude} /> : null}
+      <PointerReadout readout={readout} />
+      <Stars radius={90} depth={30} count={900} factor={2} fade speed={0.15} />
     </>
   );
 }
@@ -111,6 +146,8 @@ function CameraRig({
   const clock = useThree((state) => state.clock);
   const start = useRef(new THREE.Vector3());
   const end = useRef(new THREE.Vector3());
+  const control = useRef(new THREE.Vector3());
+  const scratch = useRef(new THREE.Vector3());
   const began = useRef(0);
   const finished = useRef(false);
   const onDoneRef = useRef(onDone);
@@ -121,6 +158,8 @@ function CameraRig({
     if (latitude === null || longitude === null || !active) return;
     start.current.copy(camera.position);
     end.current.copy(latLonToVector(latitude, longitude, 2.82));
+    const lift = Math.max(start.current.length(), 4.4);
+    control.current.copy(start.current).add(end.current).multiplyScalar(0.5).normalize().multiplyScalar(lift);
     began.current = clock.getElapsedTime();
     finished.current = false;
     if (reduce) {
@@ -133,8 +172,14 @@ function CameraRig({
 
   useFrame(() => {
     if (latitude === null || longitude === null || !active || finished.current || reduce) return;
-    const t = smoothstep((clock.getElapsedTime() - began.current) / 2.7);
-    camera.position.lerpVectors(start.current, end.current, t);
+    const t = smoothstep((clock.getElapsedTime() - began.current) / 3.1);
+    const u = 1 - t;
+    scratch.current
+      .set(0, 0, 0)
+      .addScaledVector(start.current, u * u)
+      .addScaledVector(control.current, 2 * u * t)
+      .addScaledVector(end.current, t * t);
+    camera.position.copy(scratch.current);
     camera.lookAt(0, 0, 0);
     if (t >= 1) {
       finished.current = true;
@@ -150,13 +195,11 @@ function Earth() {
   const procedural = useMemo(() => createPlanetTextures(), []);
   const day = useRemoteTexture(DAY_URL);
   const night = useRemoteTexture(NIGHT_URL);
-  const sun = useRef(new THREE.Vector3(4, 0.6, 2).normalize());
-
   const uniforms = useMemo(
     () => ({
       dayMap: { value: procedural.day },
       nightMap: { value: procedural.night },
-      sunDirection: { value: sun.current.clone() },
+      sunDirection: { value: solarDirection() },
     }),
     [procedural.day, procedural.night],
   );
@@ -168,12 +211,10 @@ function Earth() {
     material.uniforms.nightMap.value = night ?? procedural.night;
   }, [day, night, procedural.day, procedural.night]);
 
-  useFrame(({ clock }) => {
+  useFrame(() => {
     const material = materialRef.current;
     if (!material) return;
-    const angle = clock.getElapsedTime() * 0.05;
-    sun.current.set(Math.cos(angle) * 4, 0.55, Math.sin(angle) * 4).normalize();
-    material.uniforms.sunDirection.value.copy(sun.current);
+    material.uniforms.sunDirection.value.copy(solarDirection());
   });
 
   return (
@@ -191,34 +232,44 @@ function Earth() {
 }
 
 function Clouds() {
-  const ref = useRef<THREE.Mesh>(null);
+  const lower = useRef<THREE.Mesh>(null);
+  const upper = useRef<THREE.Mesh>(null);
   const remote = useRemoteTexture(CLOUD_URL);
   const procedural = useMemo(() => createCloudTexture(), []);
+  const map = remote ?? procedural;
 
   useFrame((_, delta) => {
-    if (!ref.current) return;
-    ref.current.rotation.y += delta * 0.012;
+    if (lower.current) lower.current.rotation.y += delta * 0.012;
+    if (upper.current) upper.current.rotation.y -= delta * 0.007;
   });
 
   return (
-    <mesh ref={ref}>
-      <sphereGeometry args={[GLOBE_RADIUS * 1.025, 64, 64]} />
-      <meshBasicMaterial
-        map={remote ?? procedural}
-        transparent
-        opacity={0.42}
-        depthWrite={false}
-        toneMapped={false}
-      />
-    </mesh>
+    <group>
+      <mesh ref={lower}>
+        <sphereGeometry args={[GLOBE_RADIUS * 1.02, 64, 64]} />
+        <meshBasicMaterial map={map} transparent opacity={0.34} depthWrite={false} toneMapped={false} />
+      </mesh>
+      <mesh ref={upper}>
+        <sphereGeometry args={[GLOBE_RADIUS * 1.055, 48, 48]} />
+        <meshBasicMaterial map={map} transparent opacity={0.18} depthWrite={false} toneMapped={false} />
+      </mesh>
+    </group>
   );
 }
 
 function Atmosphere() {
+  const material = useRef<THREE.ShaderMaterial>(null);
+  const uniforms = useMemo(() => ({ sunDirection: { value: solarDirection() } }), []);
+  useFrame(() => {
+    if (!material.current) return;
+    material.current.uniforms.sunDirection.value.copy(solarDirection());
+  });
   return (
-    <mesh scale={1.08}>
+    <mesh scale={1.12}>
       <sphereGeometry args={[GLOBE_RADIUS, 64, 64]} />
       <shaderMaterial
+        ref={material}
+        uniforms={uniforms}
         vertexShader={atmosphereVertex}
         fragmentShader={atmosphereFragment}
         side={THREE.BackSide}
@@ -298,6 +349,144 @@ function useReducedMotion(): boolean {
   return reduce;
 }
 
+function Hotspots() {
+  return (
+    <group>
+      {DELTA_HOTSPOTS.map((spot) => (
+        <Beacon key={spot.id} latitude={spot.latitude} longitude={spot.longitude} />
+      ))}
+    </group>
+  );
+}
+
+function Satellites() {
+  const group = useRef<THREE.Group>(null);
+  useFrame(({ clock }) => {
+    if (!group.current) return;
+    group.current.children.forEach((child, index) => {
+      child.rotation.z = clock.elapsedTime * (0.18 + index * 0.05);
+    });
+  });
+  return (
+    <group ref={group}>
+      {SATELLITES.map((satellite) => (
+        <group key={satellite.id} rotation={[THREE.MathUtils.degToRad(satellite.inclination - 90), satellite.phase, 0]}>
+          <mesh>
+            <torusGeometry args={[2.62, 0.006, 8, 80]} />
+            <meshBasicMaterial color="#7ef6ff" transparent opacity={0.45} toneMapped={false} />
+          </mesh>
+          <mesh position={[2.62, 0, 0]}>
+            <sphereGeometry args={[0.03, 10, 10]} />
+            <meshBasicMaterial color="#ffffff" toneMapped={false} />
+          </mesh>
+        </group>
+      ))}
+    </group>
+  );
+}
+
+function Aurora() {
+  const positions = useMemo(() => {
+    const count = 180;
+    const values = new Float32Array(count * 3);
+    for (let index = 0; index < count; index += 1) {
+      const latitude = index % 2 === 0 ? 68 + (index % 12) : -68 - (index % 12);
+      const longitude = ((index * 19) % 360) - 180;
+      const point = latLonToVector(latitude, longitude, GLOBE_RADIUS * 1.08);
+      values[index * 3] = point.x;
+      values[index * 3 + 1] = point.y;
+      values[index * 3 + 2] = point.z;
+    }
+    return values;
+  }, []);
+  const ref = useRef<THREE.Points>(null);
+  useFrame(({ clock }) => {
+    if (ref.current) ref.current.rotation.y = clock.elapsedTime * 0.02;
+  });
+  return (
+    <points ref={ref}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+      </bufferGeometry>
+      <pointsMaterial color="#7dffa8" size={0.035} transparent opacity={0.7} depthWrite={false} toneMapped={false} />
+    </points>
+  );
+}
+
+function CatalogueStars() {
+  const positions = useMemo(() => {
+    const values = new Float32Array(BRIGHT_STARS.length * 3);
+    BRIGHT_STARS.forEach((star, index) => {
+      const point = latLonToVector(star.dec, star.raHours * 15 - 180, 46);
+      values[index * 3] = point.x;
+      values[index * 3 + 1] = point.y;
+      values[index * 3 + 2] = point.z;
+    });
+    return values;
+  }, []);
+  return (
+    <points>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+      </bufferGeometry>
+      <pointsMaterial color="#f4f7ff" size={0.18} sizeAttenuation transparent opacity={0.95} toneMapped={false} />
+    </points>
+  );
+}
+
+function Rain({ latitude, longitude }: { latitude: number; longitude: number }) {
+  const count = 80;
+  const seeds = useMemo(() => Array.from({ length: count }, (_, index) => index / count), []);
+  const ref = useRef<THREE.Points>(null);
+  const placement = useMemo(() => latLonToVector(latitude, longitude, GLOBE_RADIUS * 1.02), [latitude, longitude]);
+  const positions = useMemo(() => new Float32Array(count * 3), []);
+  useFrame(({ clock }) => {
+    const geometry = ref.current?.geometry;
+    const attribute = geometry?.getAttribute("position");
+    if (!attribute) return;
+    seeds.forEach((seed, index) => {
+      const fall = (clock.elapsedTime * 0.35 + seed) % 1;
+      positions[index * 3] = (seed - 0.5) * 0.35;
+      positions[index * 3 + 1] = 0.45 - fall * 0.5;
+      positions[index * 3 + 2] = ((index % 7) - 3) * 0.03;
+    });
+    attribute.needsUpdate = true;
+  });
+  const quaternion = useMemo(
+    () => new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), placement.clone().normalize()),
+    [placement],
+  );
+  return (
+    <points ref={ref} position={placement} quaternion={quaternion}>
+      <bufferGeometry>
+        <bufferAttribute attach="attributes-position" args={[positions, 3]} />
+      </bufferGeometry>
+      <pointsMaterial color="#b7ecff" size={0.015} transparent opacity={0.8} depthWrite={false} toneMapped={false} />
+    </points>
+  );
+}
+
+function PointerReadout({ readout }: { readout: RefObject<HTMLParagraphElement> }) {
+  const camera = useThree((state) => state.camera);
+  const pointer = useThree((state) => state.pointer);
+  const raycaster = useMemo(() => new THREE.Raycaster(), []);
+  const sphere = useMemo(() => new THREE.Sphere(new THREE.Vector3(), GLOBE_RADIUS), []);
+  const hit = useMemo(() => new THREE.Vector3(), []);
+  useFrame(() => {
+    const node = readout.current;
+    if (!node) return;
+    raycaster.setFromCamera(pointer, camera);
+    const found = raycaster.ray.intersectSphere(sphere, hit);
+    if (!found) {
+      node.textContent = "";
+      return;
+    }
+    const place = vectorToLatLon(hit);
+    node.textContent = `${place.latitude.toFixed(2)}°, ${place.longitude.toFixed(2)}°`;
+  });
+  return null;
+}
+
 export function latLonToVector(latitude: number, longitude: number, radius: number): THREE.Vector3 {
   const phi = THREE.MathUtils.degToRad(90 - latitude);
   const theta = THREE.MathUtils.degToRad(longitude + 180);
@@ -306,6 +495,24 @@ export function latLonToVector(latitude: number, longitude: number, radius: numb
     radius * Math.cos(phi),
     radius * Math.sin(phi) * Math.sin(theta),
   );
+}
+
+function solarDirection(date = new Date()): THREE.Vector3 {
+  const start = Date.UTC(date.getUTCFullYear(), 0, 0);
+  const day = (date.getTime() - start) / 86400000;
+  const declination = 23.44 * Math.sin((2 * Math.PI * (day - 81)) / 365);
+  const hours = date.getUTCHours() + date.getUTCMinutes() / 60 + date.getUTCSeconds() / 3600;
+  const longitude = -15 * (hours - 12);
+  return latLonToVector(declination, longitude, 1).normalize();
+}
+
+function vectorToLatLon(vector: THREE.Vector3): { latitude: number; longitude: number } {
+  const normal = vector.clone().normalize();
+  const latitude = THREE.MathUtils.radToDeg(Math.asin(THREE.MathUtils.clamp(normal.y, -1, 1)));
+  let longitude = THREE.MathUtils.radToDeg(Math.atan2(normal.z, -normal.x)) - 180;
+  if (longitude < -180) longitude += 360;
+  if (longitude > 180) longitude -= 360;
+  return { latitude, longitude };
 }
 
 function smoothstep(value: number): number {
@@ -426,12 +633,22 @@ const earthFragment = `
   uniform vec3 sunDirection;
   varying vec2 vUv;
   varying vec3 vNormal;
+  varying vec3 vWorld;
   void main() {
     vec3 dayColor = texture2D(dayMap, vUv).rgb;
     vec3 nightColor = texture2D(nightMap, vUv).rgb;
-    float lambert = dot(normalize(vNormal), normalize(sunDirection));
-    float dayMix = smoothstep(-0.12, 0.28, lambert);
-    vec3 color = mix(nightColor * 1.35, dayColor, dayMix);
+    float height = dot(dayColor, vec3(0.3, 0.59, 0.11));
+    float hx = dot(texture2D(dayMap, vUv + vec2(0.0016, 0.0)).rgb, vec3(0.3, 0.59, 0.11));
+    float hy = dot(texture2D(dayMap, vUv + vec2(0.0, 0.0016)).rgb, vec3(0.3, 0.59, 0.11));
+    vec3 normal = normalize(normalize(vNormal) + vec3(height - hx, hy - height, 0.0) * 1.4);
+    float lambert = dot(normal, normalize(sunDirection));
+    float dayMix = smoothstep(-0.08, 0.22, lambert);
+    vec3 color = mix(nightColor * 1.45, dayColor, dayMix);
+    float ocean = smoothstep(0.02, 0.2, dayColor.b - max(dayColor.r, dayColor.g));
+    vec3 viewDirection = normalize(cameraPosition - vWorld);
+    vec3 halfVector = normalize(normalize(sunDirection) + viewDirection);
+    float spec = pow(max(dot(normal, halfVector), 0.0), 42.0) * ocean * dayMix;
+    color += spec * vec3(0.75, 0.9, 1.0);
     gl_FragColor = vec4(color, 1.0);
   }
 `;
@@ -448,11 +665,16 @@ const atmosphereVertex = `
 `;
 
 const atmosphereFragment = `
+  uniform vec3 sunDirection;
   varying vec3 vNormal;
   varying vec3 vWorld;
   void main() {
     vec3 viewDirection = normalize(cameraPosition - vWorld);
-    float fresnel = pow(1.0 - abs(dot(viewDirection, normalize(vNormal))), 2.6);
-    gl_FragColor = vec4(0.45, 0.82, 0.78, 1.0) * fresnel;
+    vec3 normal = normalize(vNormal);
+    float fresnel = pow(1.0 - abs(dot(viewDirection, normal)), 2.8);
+    float mie = pow(max(dot(viewDirection, normalize(sunDirection)), 0.0), 10.0);
+    vec3 rayleigh = vec3(0.22, 0.48, 0.95) * fresnel;
+    vec3 scatter = vec3(1.0, 0.72, 0.42) * mie * fresnel;
+    gl_FragColor = vec4((rayleigh + scatter) * 1.35, fresnel);
   }
 `;

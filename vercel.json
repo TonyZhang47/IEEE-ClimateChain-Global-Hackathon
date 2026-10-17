@@ -11,6 +11,21 @@
     },
     "src/app/api/geocode/route.ts": {
       "maxDuration": 30
+    },
+    "src/app/api/nldi/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/climate/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/radar/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/profile/route.ts": {
+      "maxDuration": 30
+    },
+    "src/app/api/health/route.ts": {
+      "maxDuration": 30
     }
   }
 }

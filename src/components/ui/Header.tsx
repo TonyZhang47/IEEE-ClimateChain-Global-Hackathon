@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { Droplets } from "lucide-react";
 import { shortAddress } from "@/lib/utils";
 import { useHydroWallet } from "@/lib/blockchain/web3Provider";
@@ -8,9 +9,10 @@ interface HeaderProps {
   stage: "orbit" | "descent" | "workspace";
   onNavigate: (stage: "orbit" | "workspace") => void;
   workspaceEnabled: boolean;
+  children?: ReactNode;
 }
 
-export function Header({ stage, onNavigate, workspaceEnabled }: HeaderProps) {
+export function Header({ stage, onNavigate, workspaceEnabled, children }: HeaderProps) {
   const wallet = useHydroWallet();
 
   return (
@@ -21,7 +23,7 @@ export function Header({ stage, onNavigate, workspaceEnabled }: HeaderProps) {
         </span>
         <div>
           <p className="text-sm font-semibold tracking-wide text-foam">HydroTrust AI</p>
-          <p className="text-[11px] uppercase tracking-[0.16em] text-mist">IEEE ClimateChain</p>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-mist">IEEE ClimateChain · resilience track</p>
         </div>
       </div>
       <nav className="flex items-center gap-2">
@@ -40,6 +42,7 @@ export function Header({ stage, onNavigate, workspaceEnabled }: HeaderProps) {
         >
           Watershed
         </button>
+        {children}
         <span className="hidden rounded-full border border-line px-3 py-1 font-mono text-[11px] text-mist sm:inline">
           {wallet.address ? shortAddress(wallet.address) : "Wallet idle"}
         </span>

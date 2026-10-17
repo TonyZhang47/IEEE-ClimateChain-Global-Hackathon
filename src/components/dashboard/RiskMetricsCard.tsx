@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import type { BlueCarbonRating, FloodRiskScore } from "@/types/hydro";
 import { formatNumber } from "@/lib/utils";
 
@@ -16,12 +17,12 @@ export function RiskMetricsCard({ risk, blueCarbon }: RiskMetricsCardProps) {
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[11px] uppercase tracking-[0.16em] text-mist">Flood vulnerability</p>
-          <p className={`mt-1 font-mono text-5xl leading-none ${tone}`}>{risk.score}</p>
+          <p className={`mt-1 font-mono text-5xl leading-none ${tone}`}><Count value={risk.score} /></p>
           <p className="mt-2 text-xs text-mist">Confidence {risk.confidence} · screening index, not a flood map</p>
         </div>
         <div className="text-right">
           <p className="text-[11px] uppercase tracking-[0.16em] text-mist">Blue carbon</p>
-          <p className="mt-1 font-mono text-3xl text-aqua">{blueCarbon.score}</p>
+          <p className="mt-1 font-mono text-3xl text-aqua"><Count value={blueCarbon.score} /></p>
           <p className="mt-2 text-xs text-mist">{formatNumber(blueCarbon.annualSequestrationTco2e, 2)} tCO₂e/yr</p>
         </div>
       </div>
@@ -48,6 +49,27 @@ export function RiskMetricsCard({ risk, blueCarbon }: RiskMetricsCardProps) {
       </ul>
     </section>
   );
+}
+
+function Count({ value }: { value: number }) {
+  const [shown, setShown] = useState(0);
+  useEffect(() => {
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      setShown(value);
+      return;
+    }
+    const started = performance.now();
+    let frame = 0;
+    const tick = (now: number) => {
+      const t = Math.min(1, (now - started) / 700);
+      setShown(Math.round(value * (1 - (1 - t) ** 3)));
+      if (t < 1) frame = window.requestAnimationFrame(tick);
+    };
+    frame = window.requestAnimationFrame(tick);
+    return () => window.cancelAnimationFrame(frame);
+  }, [value]);
+  return <>{shown}</>;
 }
 
 function Bar({ label, value, max }: { label: string; value: number; max: number }) {

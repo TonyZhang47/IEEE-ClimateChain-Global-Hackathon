@@ -12,6 +12,7 @@ import {
   useHydroWallet,
   walletError,
 } from "@/lib/blockchain/web3Provider";
+import { pushToast } from "@/lib/experience/toasts";
 import { shortAddress, shortHash } from "@/lib/utils";
 
 const LOG_KEY = "hydrotrust.verifications";
@@ -126,6 +127,7 @@ export function Web3VerifierPanel({ snapshot, onCommitment, onVerification }: We
         timestamp: Date.now(),
       });
       setChainHistory(await readTelemetryHistory(payload.location));
+      pushToast("Telemetry transaction confirmed.");
     } catch (reason) {
       setError(walletError(reason));
     } finally {
@@ -146,6 +148,7 @@ export function Web3VerifierPanel({ snapshot, onCommitment, onVerification }: We
       };
       updateRecord(next);
       setBalance(await readCreditBalance(wallet.address));
+      pushToast("Mint transaction confirmed.");
     } catch (reason) {
       setError(walletError(reason));
     } finally {

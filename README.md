@@ -150,6 +150,17 @@ src/lib/pdf                          Briefing export
 
 Next.js 14 (App Router), TypeScript, Tailwind CSS, Radix UI, Three.js and React Three Fiber, MapLibre GL, Turf.js, Recharts, Ethers v6, Hardhat, jsPDF.
 
+## Desk tools
+
+The workspace adds a layer panel, a scoring desk, and a chain desk on top of the original screen.
+
+- **Globe.** The day/night boundary follows an approximate UTC solar position. Clouds are two shells. Delta beacons, inclined satellite rings, a bright-star backdrop, and polar particles are drawn in the scene. Rain particles appear only when the active flood index is 60 or higher. The coordinate readout is a raycast on the globe.
+- **Map.** Terrain exaggeration, H3 cells, animated particles on the loaded flowlines, RainViewer radar, Open-Meteo rain and soil moisture, and NLDI basin / upstream / downstream traces are toggles. Buffer rings and the stage disk are geometric screens, not a hydraulic model. Walk rings assume 4 km/h in a straight line. The elevation profile is a USGS point sample every 200 m.
+- **Scoring desk.** Component chart, local briefing, watershed questions, a labeled storm multiplier, gauge z-score, and the same core equations as `notebooks/hydro_score.py`. Insurance, restoration, and property figures are worksheets. The exposure index does not include census data. Headings can switch language; the measured narrative stays in English.
+- **Chain desk.** Wallet switching uses EIP-1193 and EIP-6963. Gas estimates and signatures require a connected wallet and a deployed contract. Votes, order notes, and exploration marks stay in `localStorage`. The parametric line does not send USDC. The certificate is a preview, not an NFT. The contract source shown is the file in this repository.
+
+`Ctrl/Cmd+K` opens the command palette. Arrow keys pan the map, `+/-` zoom, space recenters, and `M` toggles hydrography. Sound is off until the header button is pressed.
+
 ## Limits
 
 The flood index and carbon rating are screening tools for a briefing. They are not a regulatory floodplain determination, an engineering design, or a carbon-registry issuance. dREC minted by this contract is a hackathon stewardship token with a hard cap and a cooldown, not a registered environmental credit.

@@ -32,6 +32,9 @@ export const EXAMPLE_PLACES = [
   { id: "iowa-city", label: "Iowa City, Iowa, United States", latitude: 41.6611, longitude: -91.5302, kind: "city" },
   { id: "new-orleans", label: "New Orleans, Louisiana, United States", latitude: 29.9511, longitude: -90.0715, kind: "city" },
   { id: "sacramento", label: "Sacramento, California, United States", latitude: 38.5816, longitude: -121.4944, kind: "city" },
+  { id: "baltimore", label: "Baltimore Inner Harbor, Maryland, United States", latitude: 39.285, longitude: -76.61, kind: "harbor" },
+  { id: "rhine", label: "Cologne, Rhine, Germany", latitude: 50.9375, longitude: 6.9603, kind: "city" },
+  { id: "indus", label: "Sukkur, Indus River, Pakistan", latitude: 27.7052, longitude: 68.8574, kind: "city" },
   { id: "dhaka", label: "Dhaka, Bangladesh", latitude: 23.8103, longitude: 90.4125, kind: "city" },
   { id: "rotterdam", label: "Rotterdam, Netherlands", latitude: 51.9244, longitude: 4.4777, kind: "city" },
 ] as const;

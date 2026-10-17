@@ -1,6 +1,7 @@
 import type { Map, StyleSpecification } from "maplibre-gl";
 
 export const DARK_STYLE_URL = "https://tiles.openfreemap.org/styles/dark";
+export const LIGHT_STYLE_URL = "https://tiles.openfreemap.org/styles/positron";
 export const TERRARIUM_TILES = "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png";
 
 export function rasterFallbackStyle(): StyleSpecification {

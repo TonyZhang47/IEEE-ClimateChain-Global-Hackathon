@@ -1,5 +1,5 @@
 import { buildHydroSnapshot } from "@/lib/api/snapshot";
-import { fetchGaugeSeries } from "@/lib/api/usgs";
+import { fetchGaugeSeries, type GaugePeriod } from "@/lib/api/usgs";
 import type { PlaceSuggestion } from "@/types/hydro";
 
 export const dynamic = "force-dynamic";
@@ -13,9 +13,13 @@ export async function GET(request: Request): Promise<Response> {
     if (!/^[A-Za-z0-9-]{7,20}$/.test(site)) {
       return Response.json({ error: "Site id is not a USGS identifier." }, { status: 400 });
     }
+    const period = readPeriod(url.searchParams.get("period"));
+    if (!period) {
+      return Response.json({ error: "Period must be P1D, P7D, P30D, or P365D." }, { status: 400 });
+    }
     try {
-      const series = await fetchGaugeSeries(site);
-      return Response.json({ siteId: site, series });
+      const series = await fetchGaugeSeries(site, period);
+      return Response.json({ siteId: site, period, series });
     } catch (error) {
       const message = error instanceof Error ? error.message : "USGS history failed";
       return Response.json({ error: message }, { status: 502 });
@@ -43,6 +47,13 @@ export async function GET(request: Request): Promise<Response> {
     const message = error instanceof Error ? error.message : "Hydrography assembly failed";
     return Response.json({ error: message }, { status: 502 });
   }
+}
+
+function readPeriod(value: string | null): GaugePeriod | null {
+  if (value === null || value === "P7D" || value === "P1D" || value === "P30D" || value === "P365D") {
+    return value === null ? "P7D" : value;
+  }
+  return null;
 }
 
 function readCoordinate(value: string | null, min: number, max: number): number | null {

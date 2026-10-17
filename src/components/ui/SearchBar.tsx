@@ -4,6 +4,7 @@ import { Search } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import type { PlaceSuggestion } from "@/types/hydro";
 import { parseCoordinateQuery } from "@/lib/api/nominatim";
+import { parseConversationalQuery } from "@/lib/experience/catalog";
 
 interface SearchBarProps {
   onSelect: (place: PlaceSuggestion) => void;
@@ -30,7 +31,7 @@ export function SearchBar({ onSelect, variant = "hero", initialLabel = "" }: Sea
 
   useEffect(() => {
     if (!edited.current) return;
-    const trimmed = query.trim();
+    const trimmed = parseConversationalQuery(query);
     if (trimmed.length < 2) {
       setResults([]);
       setStatus(null);
@@ -92,7 +93,7 @@ export function SearchBar({ onSelect, variant = "hero", initialLabel = "" }: Sea
         <input
           id={`${listId}-input`}
           value={query}
-          placeholder="Search a city, or enter latitude, longitude"
+          placeholder="Search a city, a river near a place, or latitude, longitude"
           className="w-full bg-transparent text-sm text-foam outline-none placeholder:text-mist"
           role="combobox"
           aria-expanded={open}

@@ -65,63 +65,86 @@ function confidenceReason(snapshot: HydroSnapshot): string {
   return "the screen is leaning on priors or the downhill model.";
 }
 
+interface ModelProvider {
+  endpoint: string;
+  key: string;
+  model: string;
+}
+
 export async function synthesizeAdvisory(snapshot: HydroSnapshot): Promise<AdvisoryReport> {
-  const xaiKey = process.env.XAI_API_KEY;
-  const openaiKey = process.env.OPENAI_API_KEY;
   const fallback = buildDeterministicAdvisory(snapshot);
+  const providers = configuredProviders();
+  if (providers.length === 0) return fallback;
 
-  if (!xaiKey && !openaiKey) return fallback;
-
-  const endpoint = xaiKey ? "https://api.x.ai/v1/chat/completions" : "https://api.openai.com/v1/chat/completions";
-  const key = xaiKey ?? openaiKey ?? "";
-  const model = xaiKey ? process.env.XAI_MODEL || "grok-4" : process.env.OPENAI_MODEL || "gpt-4o-mini";
-
-  try {
-    const response = await fetch(endpoint, {
-      method: "POST",
-      cache: "no-store",
-      signal: AbortSignal.timeout(25000),
-      headers: {
-        Authorization: `Bearer ${key}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        temperature: 0.2,
-        response_format: { type: "json_object" },
-        messages: [
-          {
-            role: "system",
-            content:
-              "You are a hydrologist writing a short community and policy advisory. Use only numbers present in the user payload. Do not invent gauges, depths, or casualties. Return JSON with keys headline, summary, communityActions, policyActions. Actions are concrete and local.",
-          },
-          {
-            role: "user",
-            content: JSON.stringify(modelContext(snapshot)),
-          },
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      return { ...fallback, notice: `Model request failed (${response.status}). Showing the deterministic advisory.` };
+  const failures: string[] = [];
+  for (const provider of providers) {
+    try {
+      return await requestAdvisory(provider, snapshot);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "model error";
+      failures.push(`${provider.model}: ${message}`);
     }
-
-    const body: unknown = await response.json();
-    const text = extractContent(body);
-    if (!text) {
-      return { ...fallback, notice: "The model returned an empty completion. Showing the deterministic advisory." };
-    }
-    const parsed = advisorySchema.parse(parseModelJson(text));
-    return {
-      ...parsed,
-      confidence: "model",
-      model,
-    };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "model error";
-    return { ...fallback, notice: `Model output was unusable (${message}). Showing the deterministic advisory.` };
   }
+  return {
+    ...fallback,
+    notice: `Model calls failed (${failures.join("; ")}). Showing the deterministic advisory.`,
+  };
+}
+
+function configuredProviders(): ModelProvider[] {
+  const providers: ModelProvider[] = [];
+  if (process.env.XAI_API_KEY) {
+    providers.push({
+      endpoint: "https://api.x.ai/v1/chat/completions",
+      key: process.env.XAI_API_KEY,
+      model: process.env.XAI_MODEL || "grok-4",
+    });
+  }
+  if (process.env.OPENAI_API_KEY) {
+    providers.push({
+      endpoint: "https://api.openai.com/v1/chat/completions",
+      key: process.env.OPENAI_API_KEY,
+      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+    });
+  }
+  return providers;
+}
+
+async function requestAdvisory(provider: ModelProvider, snapshot: HydroSnapshot): Promise<AdvisoryReport> {
+  const response = await fetch(provider.endpoint, {
+    method: "POST",
+    cache: "no-store",
+    signal: AbortSignal.timeout(25000),
+    headers: {
+      Authorization: `Bearer ${provider.key}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: provider.model,
+      temperature: 0.2,
+      response_format: { type: "json_object" },
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are a hydrologist writing a short community and policy advisory. Use only numbers present in the user payload. Do not invent gauges, depths, or casualties. Return JSON with keys headline, summary, communityActions, policyActions. Actions are concrete and local.",
+        },
+        {
+          role: "user",
+          content: JSON.stringify(modelContext(snapshot)),
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error(`request failed (${response.status})`);
+  }
+  const body: unknown = await response.json();
+  const text = extractContent(body);
+  if (!text) throw new Error("empty completion");
+  const parsed = advisorySchema.parse(parseModelJson(text));
+  return { ...parsed, confidence: "model", model: provider.model };
 }
 
 function modelContext(snapshot: HydroSnapshot) {

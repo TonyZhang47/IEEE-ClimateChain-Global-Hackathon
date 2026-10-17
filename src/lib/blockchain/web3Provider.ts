@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BrowserProvider, type Eip1193Provider } from "ethers";
+import { BrowserProvider, verifyMessage, type Eip1193Provider } from "ethers";
+import { NETWORKS } from "@/lib/experience/catalog";
 import type { OnChainTelemetry, WalletSnapshot } from "@/types/web3";
 import {
   connectHydroTrust,
@@ -23,7 +24,16 @@ interface WalletStore extends WalletSnapshot {
   disconnect: () => void;
 }
 
+export interface AnnouncedWallet {
+  name: string;
+  rdns: string;
+  provider: EthereumRequest;
+}
+
 const listeners = new Set<() => void>();
+const announced: AnnouncedWallet[] = [];
+let overrideProvider: EthereumRequest | null = null;
+let watchingWallets = false;
 let snapshot: WalletSnapshot = {
   address: null,
   chainId: null,
@@ -41,6 +51,7 @@ function setSnapshot(next: Partial<WalletSnapshot>): void {
 }
 
 function ethereum(): EthereumRequest | null {
+  if (overrideProvider) return overrideProvider;
   if (typeof window === "undefined") return null;
   const candidate = (window as Window & { ethereum?: EthereumRequest }).ethereum;
   if (!candidate || typeof candidate.request !== "function") return null;
@@ -127,7 +138,103 @@ export async function connect(): Promise<void> {
 
 export function disconnect(): void {
   window.localStorage.setItem(STORAGE_KEY, "1");
+  overrideProvider = null;
   setSnapshot({ address: null, error: null, connecting: false });
+}
+
+export function requestWallets(): void {
+  if (typeof window === "undefined") return;
+  if (!watchingWallets) {
+    watchingWallets = true;
+    window.addEventListener("eip6963:announceProvider", (event: Event) => {
+      const detail = (event as CustomEvent<{ info?: { name?: string; rdns?: string }; provider?: EthereumRequest }>).detail;
+      if (!detail?.provider || !detail.info?.rdns) return;
+      if (announced.some((item) => item.rdns === detail.info?.rdns)) return;
+      announced.push({
+        name: detail.info.name ?? detail.info.rdns,
+        rdns: detail.info.rdns,
+        provider: detail.provider,
+      });
+      emit();
+    });
+  }
+  window.dispatchEvent(new Event("eip6963:requestProvider"));
+}
+
+export function useAnnouncedWallets(): AnnouncedWallet[] {
+  const [list, setList] = useState<AnnouncedWallet[]>([]);
+  useEffect(() => {
+    const listener = () => setList([...announced]);
+    listeners.add(listener);
+    requestWallets();
+    return () => {
+      listeners.delete(listener);
+    };
+  }, []);
+  return list;
+}
+
+export async function connectWith(provider: EthereumRequest): Promise<void> {
+  overrideProvider = provider;
+  await connect();
+}
+
+export async function switchNetwork(chainId: number): Promise<void> {
+  const provider = ethereum();
+  if (!provider) throw new Error("No injected wallet was found.");
+  const hex = `0x${chainId.toString(16)}`;
+  const network = NETWORKS.find((item) => item.chainId === chainId);
+  try {
+    await provider.request({ method: "wallet_switchEthereumChain", params: [{ chainId: hex }] });
+  } catch (error) {
+    const code = typeof error === "object" && error !== null && "code" in error ? (error as { code?: unknown }).code : null;
+    if (code !== 4902 || !network) throw error;
+    await provider.request({
+      method: "wallet_addEthereumChain",
+      params: [
+        {
+          chainId: hex,
+          chainName: network.name,
+          nativeCurrency: {
+            name: chainId === 80002 ? "POL" : "Ether",
+            symbol: chainId === 80002 ? "POL" : "ETH",
+            decimals: 18,
+          },
+          rpcUrls: [network.rpc],
+          blockExplorerUrls: network.explorer ? [network.explorer] : [],
+        },
+      ],
+    });
+  }
+  setSnapshot({ chainId, error: null });
+}
+
+export async function estimateRecordGas(
+  location: string,
+  flowRate: number,
+  riskScore: number,
+  ipfsCid: string,
+): Promise<{ gas: string; feeEth: string | null }> {
+  const { contract } = await signerContract();
+  const gas: bigint = await contract.getFunction("recordTelemetry").estimateGas(location, BigInt(flowRate), BigInt(riskScore), ipfsCid);
+  const provider = ethereum();
+  if (!provider) return { gas: gas.toString(), feeEth: null };
+  const browser = new BrowserProvider(provider as Eip1193Provider);
+  const fee = await browser.getFeeData();
+  const price = fee.maxFeePerGas ?? fee.gasPrice;
+  const eth = price ? Number(gas * price) / 1e18 : null;
+  return { gas: gas.toString(), feeEth: eth === null ? null : eth.toFixed(6) };
+}
+
+export async function signCanonical(message: string): Promise<{ signature: string; recovered: string }> {
+  const provider = ethereum();
+  if (!provider) throw new Error("No injected wallet was found.");
+  const accounts = await provider.request({ method: "eth_requestAccounts" });
+  const account = Array.isArray(accounts) ? accounts[0] : null;
+  if (typeof account !== "string") throw new Error("The wallet returned no account.");
+  const signature = await provider.request({ method: "personal_sign", params: [message, account] });
+  if (typeof signature !== "string") throw new Error("The wallet did not return a signature.");
+  return { signature, recovered: verifyMessage(message, signature) };
 }
 
 export async function ensureExpectedChain(): Promise<void> {

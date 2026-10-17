@@ -27,6 +27,7 @@ export function StreamGaugeLayer({ map, gauges, onSelect }: StreamGaugeLayerProp
         const button = document.createElement("button");
         button.type = "button";
         button.className = "gauge-pin";
+        button.dataset.flow = pulseBand(gauge.dischargeCfs);
         button.title = gauge.siteName;
         const value = document.createElement("strong");
         value.textContent =
@@ -58,15 +59,23 @@ export function StreamGaugeLayer({ map, gauges, onSelect }: StreamGaugeLayerProp
   return null;
 }
 
+const PERIODS = [
+  { id: "P1D", label: "24h" },
+  { id: "P7D", label: "7d" },
+  { id: "P30D", label: "30d" },
+  { id: "P365D", label: "1y" },
+] as const;
+
 export function GaugeDetail({ gauge }: { gauge: GaugeReading }) {
   const [series, setSeries] = useState<GaugeSeriesPoint[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [period, setPeriod] = useState<(typeof PERIODS)[number]["id"]>("P7D");
 
   useEffect(() => {
     const controller = new AbortController();
     setSeries(null);
     setError(null);
-    void fetch(`/api/hydro?site=${encodeURIComponent(gauge.siteId)}`, { signal: controller.signal })
+    void fetch(`/api/hydro?site=${encodeURIComponent(gauge.siteId)}&period=${period}`, { signal: controller.signal })
       .then(async (response) => {
         const body: unknown = await response.json();
         if (!response.ok) throw new Error("Gauge history was not available.");
@@ -78,7 +87,7 @@ export function GaugeDetail({ gauge }: { gauge: GaugeReading }) {
         setError(reason instanceof Error ? reason.message : "Gauge history failed.");
       });
     return () => controller.abort();
-  }, [gauge.siteId]);
+  }, [gauge.siteId, period]);
 
   return (
     <div className="space-y-3 text-sm">
@@ -89,10 +98,17 @@ export function GaugeDetail({ gauge }: { gauge: GaugeReading }) {
         <Metric label="Distance" value={`${formatNumber(gauge.distanceMeters, 0)} m`} />
         <Metric label="Updated" value={gauge.timestamp ? gauge.timestamp.replace("T", " ").slice(0, 16) : "—"} />
       </dl>
+      <div className="flex flex-wrap gap-1">
+        {PERIODS.map((item) => (
+          <button key={item.id} type="button" className={period === item.id ? "btn-primary" : "btn-ghost"} onClick={() => setPeriod(item.id)}>
+            {item.label}
+          </button>
+        ))}
+      </div>
       <p className="text-mist">
-        {series === null && !error ? "Loading seven-day history…" : null}
+        {series === null && !error ? "Loading gauge history…" : null}
         {error}
-        {series ? `${series.length} readings in the last seven days.` : null}
+        {series ? `${series.length} readings for ${PERIODS.find((item) => item.id === period)?.label ?? period}. Daily values are used past seven days.` : null}
       </p>
       <a
         className="inline-flex text-aqua underline-offset-4 hover:underline"
@@ -113,6 +129,13 @@ function Metric({ label, value }: { label: string; value: string }) {
       <dd className="mt-1 font-mono text-foam">{value}</dd>
     </div>
   );
+}
+
+function pulseBand(dischargeCfs: number | null): "high" | "mid" | "low" | "idle" {
+  if (dischargeCfs === null) return "idle";
+  if (dischargeCfs >= 5000) return "high";
+  if (dischargeCfs >= 500) return "mid";
+  return "low";
 }
 
 function isSeriesPayload(value: unknown): value is { series: GaugeSeriesPoint[] } {

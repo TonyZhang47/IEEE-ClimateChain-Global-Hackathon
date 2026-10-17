@@ -6,6 +6,7 @@ import type { Map as MapLibreMap } from "maplibre-gl";
 import type { GaugeReading, WaybackImagery } from "@/types/hydro";
 import { addTerrain, DARK_STYLE_URL, rasterFallbackStyle } from "@/components/map/Terrain3D";
 import { StreamGaugeLayer } from "@/components/map/StreamGaugeLayer";
+import { MapTools } from "@/components/map/MapTools";
 
 interface HydrologyMapProps {
   latitude: number;
@@ -54,6 +55,7 @@ export function HydrologyMap({
   const [mapInstance, setMapInstance] = useState<MapLibreMap | null>(null);
   const [ready, setReady] = useState(false);
   const [imagery, setImagery] = useState<"base" | "latest" | "historic">("base");
+  const [styleEpoch, setStyleEpoch] = useState(0);
   const imageryRef = useRef(imagery);
   imageryRef.current = imagery;
   waybackRef.current = wayback;
@@ -98,6 +100,7 @@ export function HydrologyMap({
         try {
           addTerrain(instance);
           ensureHydroLayers(instance);
+          setStyleEpoch((current) => current + 1);
           paintData(instance, dataRef.current.streams, dataRef.current.wetlands);
           applyImagery(instance, imageryRef.current, waybackRef.current);
         } catch (error) {
@@ -183,8 +186,16 @@ export function HydrologyMap({
 
   return (
     <div className="relative h-full min-h-[420px] w-full">
-      <div ref={containerRef} className="h-full w-full" />
+      <div ref={containerRef} className="map-reticle h-full w-full" />
       <StreamGaugeLayer map={mapInstance} gauges={gauges} onSelect={onSelectGauge} />
+      <MapTools
+        map={mapInstance}
+        ready={ready}
+        styleEpoch={styleEpoch}
+        latitude={latitude}
+        longitude={longitude}
+        streams={streams}
+      />
       <div className="pointer-events-none absolute left-3 top-3 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-2">
         <span className="pointer-events-auto rounded-full border border-line bg-abyss/80 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-mist backdrop-blur">
           {sourceLabel}

@@ -5,6 +5,7 @@ import { destination, haversineMeters } from "@/lib/gis/flowDirection";
 import { wetlandFromPolygon } from "@/lib/gis/riskCalculator";
 
 const USGS_IV = "https://waterservices.usgs.gov/nwis/iv/";
+const USGS_DV = "https://waterservices.usgs.gov/nwis/dv/";
 const NHD_FLOWLINES =
   "https://hydro.nationalmap.gov/arcgis/rest/services/nhd/MapServer/6/query";
 const EPQS = "https://epqs.nationalmap.gov/v1/json";
@@ -38,14 +39,17 @@ export async function fetchGaugesInBBox(
     .slice(0, 40);
 }
 
-export async function fetchGaugeSeries(siteId: string): Promise<GaugeSeriesPoint[]> {
-  const url = new URL(USGS_IV);
+export type GaugePeriod = "P1D" | "P7D" | "P30D" | "P365D";
+
+export async function fetchGaugeSeries(siteId: string, period: GaugePeriod = "P7D"): Promise<GaugeSeriesPoint[]> {
+  const instantaneous = period === "P1D" || period === "P7D";
+  const url = new URL(instantaneous ? USGS_IV : USGS_DV);
   url.searchParams.set("format", "json");
   url.searchParams.set("sites", siteId);
-  url.searchParams.set("period", "P7D");
+  url.searchParams.set("period", period);
   url.searchParams.set("parameterCd", "00060,00065");
 
-  const payload = await fetchJson(url.toString(), {}, 15000);
+  const payload = await fetchJson(url.toString(), {}, 20000);
   return parseSeries(payload);
 }
 
