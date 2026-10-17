@@ -3,7 +3,7 @@ import { fetchElevationMeters } from "@/lib/api/usgs";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 export async function GET(request: Request): Promise<Response> {
   const url = new URL(request.url);
@@ -15,11 +15,17 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   const offsets = [-800, -600, -400, -200, 0, 200, 400, 600, 800];
-  const samples = await mapPool(offsets, 3, (distanceM) => sampleElevation(latitude, longitude, bearing, distanceM));
-  const repaired = await Promise.all(
-    samples.map((sample, index) => sample ?? sampleElevation(latitude, longitude, bearing, offsets[index] ?? 0)),
-  );
-  const profile = repaired.filter((sample): sample is { distanceM: number; elevationM: number } => sample !== null);
+  const samples = await mapPool(offsets, offsets.length, (distanceM) => sampleElevation(latitude, longitude, bearing, distanceM));
+  const misses = samples
+    .map((sample, index) => (sample ? null : offsets[index] ?? null))
+    .filter((distance): distance is number => distance !== null);
+  const retried = misses.length > 0 ? await mapPool(misses, misses.length, (distanceM) => sampleElevation(latitude, longitude, bearing, distanceM)) : [];
+  const merged = samples.map((sample, index) => {
+    if (sample) return sample;
+    const distanceM = offsets[index];
+    return retried.find((item) => item?.distanceM === distanceM) ?? null;
+  });
+  const profile = merged.filter((sample): sample is { distanceM: number; elevationM: number } => sample !== null);
   if (profile.length < 3) {
     return Response.json({ error: "Elevation samples were not available along this line." }, { status: 502 });
   }

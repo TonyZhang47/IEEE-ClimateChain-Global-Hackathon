@@ -69,11 +69,11 @@ export async function fetchNhdFlowlines(
   url.searchParams.set("returnGeometry", "true");
   url.searchParams.set("resultRecordCount", "250");
 
-  const payload = await fetchJson(url.toString(), {}, 18000);
+  const payload = await fetchJson(url.toString(), {}, 35000);
   return nhdToLineCollection(payload);
 }
 
-export async function fetchElevationMeters(latitude: number, longitude: number, attempts = 2): Promise<number | null> {
+export async function fetchElevationMeters(latitude: number, longitude: number, attempts = 1): Promise<number | null> {
   const url = new URL(EPQS);
   url.searchParams.set("x", longitude.toFixed(6));
   url.searchParams.set("y", latitude.toFixed(6));
@@ -81,7 +81,7 @@ export async function fetchElevationMeters(latitude: number, longitude: number, 
   url.searchParams.set("wkid", "4326");
   for (let attempt = 0; attempt < attempts; attempt += 1) {
     try {
-      const payload = await fetchJson(url.toString(), {}, 8000);
+      const payload = await fetchJson(url.toString(), {}, 25000);
       if (!isRecord(payload)) continue;
       const value = asNumber(payload.value);
       if (value !== null && value > -1000 && value <= 9000) return value;
