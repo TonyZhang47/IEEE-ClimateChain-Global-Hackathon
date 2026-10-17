@@ -15,21 +15,11 @@ export async function GET(request: Request): Promise<Response> {
   }
 
   const offsets = [-800, -600, -400, -200, 0, 200, 400, 600, 800];
-  const samples = await Promise.all(
-    offsets.map(async (distanceM) => {
-      const point =
-        distanceM === 0
-          ? { latitude, longitude }
-          : destination(latitude, longitude, distanceM < 0 ? (bearing + 180) % 360 : bearing, Math.abs(distanceM));
-      try {
-        const elevationM = await fetchElevationMeters(point.latitude, point.longitude);
-        return elevationM === null ? null : { distanceM, elevationM };
-      } catch {
-        return null;
-      }
-    }),
+  const samples = await mapPool(offsets, 3, (distanceM) => sampleElevation(latitude, longitude, bearing, distanceM));
+  const repaired = await Promise.all(
+    samples.map((sample, index) => sample ?? sampleElevation(latitude, longitude, bearing, offsets[index] ?? 0)),
   );
-  const profile = samples.filter((sample): sample is { distanceM: number; elevationM: number } => sample !== null);
+  const profile = repaired.filter((sample): sample is { distanceM: number; elevationM: number } => sample !== null);
   if (profile.length < 3) {
     return Response.json({ error: "Elevation samples were not available along this line." }, { status: 502 });
   }
@@ -38,6 +28,34 @@ export async function GET(request: Request): Promise<Response> {
     samples: profile,
     note: "USGS EPQS samples every 200 m. This is a terrain cross-section, not a surveyed channel profile.",
   });
+}
+
+async function sampleElevation(
+  latitude: number,
+  longitude: number,
+  bearing: number,
+  distanceM: number,
+): Promise<{ distanceM: number; elevationM: number } | null> {
+  const point =
+    distanceM === 0
+      ? { latitude, longitude }
+      : destination(latitude, longitude, distanceM < 0 ? (bearing + 180) % 360 : bearing, Math.abs(distanceM));
+  const elevationM = await fetchElevationMeters(point.latitude, point.longitude, 1);
+  return elevationM === null ? null : { distanceM, elevationM };
+}
+
+async function mapPool<T, R>(items: T[], limit: number, task: (item: T) => Promise<R>): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (cursor < items.length) {
+      const index = cursor;
+      cursor += 1;
+      results[index] = await task(items[index] as T);
+    }
+  });
+  await Promise.all(workers);
+  return results;
 }
 
 function readCoordinate(value: string | null, min: number, max: number): number | null {

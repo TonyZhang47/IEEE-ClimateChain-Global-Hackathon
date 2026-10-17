@@ -73,17 +73,23 @@ export async function fetchNhdFlowlines(
   return nhdToLineCollection(payload);
 }
 
-export async function fetchElevationMeters(latitude: number, longitude: number): Promise<number | null> {
+export async function fetchElevationMeters(latitude: number, longitude: number, attempts = 2): Promise<number | null> {
   const url = new URL(EPQS);
   url.searchParams.set("x", longitude.toFixed(6));
   url.searchParams.set("y", latitude.toFixed(6));
   url.searchParams.set("units", "Meters");
   url.searchParams.set("wkid", "4326");
-  const payload = await fetchJson(url.toString(), {}, 10000);
-  if (!isRecord(payload)) return null;
-  const value = asNumber(payload.value);
-  if (value === null || value <= -1000 || value > 9000) return null;
-  return value;
+  for (let attempt = 0; attempt < attempts; attempt += 1) {
+    try {
+      const payload = await fetchJson(url.toString(), {}, 8000);
+      if (!isRecord(payload)) continue;
+      const value = asNumber(payload.value);
+      if (value !== null && value > -1000 && value <= 9000) return value;
+    } catch {
+      // EPQS occasionally drops a point. The next attempt covers that miss.
+    }
+  }
+  return null;
 }
 
 export async function fetchElevationProfile(

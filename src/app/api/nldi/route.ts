@@ -32,8 +32,8 @@ export async function GET(request: Request): Promise<Response> {
       mode === "basin"
         ? `${NLDI}/comid/${comid}/basin`
         : mode === "upstream"
-          ? `${NLDI}/comid/${comid}/navigate/UT?distance=25`
-          : `${NLDI}/comid/${comid}/navigate/DM?distance=25`;
+          ? `${NLDI}/comid/${comid}/navigation/UT/flowlines?distance=25`
+          : `${NLDI}/comid/${comid}/navigation/DM/flowlines?distance=25`;
     const geometry = await fetchJson(path, {}, 20000);
     if (!isRecord(geometry) || geometry.type !== "FeatureCollection") {
       return Response.json({ error: "NLDI returned an unexpected geometry." }, { status: 502 });

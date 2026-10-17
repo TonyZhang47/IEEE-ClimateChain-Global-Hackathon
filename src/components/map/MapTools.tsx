@@ -34,6 +34,7 @@ export function MapTools({ map, ready, styleEpoch, latitude, longitude, streams 
   const [trace, setTrace] = useState<TraceMode | null>(null);
   const [traceData, setTraceData] = useState<FeatureCollection | null>(null);
   const [status, setStatus] = useState<string | null>(null);
+  const [traceNote, setTraceNote] = useState<string | null>(null);
   const [climate, setClimate] = useState<string | null>(null);
   const [profile, setProfile] = useState<{ distanceM: number; elevationM: number }[] | null>(null);
   const paletteReady = useRef(false);
@@ -121,10 +122,11 @@ export function MapTools({ map, ready, styleEpoch, latitude, longitude, streams 
   useEffect(() => {
     if (!trace) {
       setTraceData(null);
+      setTraceNote(null);
       return;
     }
     let cancelled = false;
-    setStatus("Tracing NLDI…");
+    setTraceNote("Tracing NLDI…");
     void fetch(`/api/nldi?lat=${latitude}&lon=${longitude}&mode=${trace}`)
       .then(async (response) => {
         const body: unknown = await response.json();
@@ -133,7 +135,7 @@ export function MapTools({ map, ready, styleEpoch, latitude, longitude, streams 
         if (!isFeatureCollection(geojson)) throw new Error("NLDI returned no features.");
         if (cancelled) return;
         setTraceData(geojson);
-        setStatus(
+        setTraceNote(
           trace === "basin"
             ? `Catchment ${String(body.comid)} from NLDI.`
             : trace === "upstream"
@@ -142,7 +144,7 @@ export function MapTools({ map, ready, styleEpoch, latitude, longitude, streams 
         );
       })
       .catch((reason: unknown) => {
-        if (!cancelled) setStatus(reason instanceof Error ? reason.message : "NLDI trace failed.");
+        if (!cancelled) setTraceNote(reason instanceof Error ? reason.message : "NLDI trace failed.");
       });
     return () => {
       cancelled = true;
@@ -267,6 +269,7 @@ export function MapTools({ map, ready, styleEpoch, latitude, longitude, streams 
           <button type="button" className="btn-ghost" onClick={loadProfile}>Profile</button>
         </div>
         {climate ? <p>{climate}</p> : <p>Loading precipitation and soil moisture…</p>}
+        {traceNote ? <p>{traceNote}</p> : null}
         {status ? <p>{status}</p> : null}
         {profile ? <ProfileChart samples={profile} /> : null}
         <p className="text-[10px] uppercase tracking-[0.14em]">Arrows pan · +/- zoom · space recenters · M toggles hydrography</p>
@@ -291,9 +294,12 @@ function ProfileChart({ samples }: { samples: { distanceM: number; elevationM: n
   const min = Math.min(...samples.map((sample) => sample.elevationM));
   const max = Math.max(...samples.map((sample) => sample.elevationM));
   const span = Math.max(1, max - min);
+  const minDistance = Math.min(...samples.map((sample) => sample.distanceM));
+  const maxDistance = Math.max(...samples.map((sample) => sample.distanceM));
+  const distanceSpan = Math.max(1, maxDistance - minDistance);
   const points = samples
-    .map((sample, index) => {
-      const x = (index / Math.max(1, samples.length - 1)) * 220;
+    .map((sample) => {
+      const x = ((sample.distanceM - minDistance) / distanceSpan) * 220;
       const y = 48 - ((sample.elevationM - min) / span) * 40;
       return `${x},${y}`;
     })

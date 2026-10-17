@@ -54,6 +54,7 @@ export function AnalysisDeck({ snapshot }: AnalysisDeckProps) {
     return () => window.clearInterval(timer);
   }, [briefing]);
 
+  const baseline = stormScenario(snapshot, 1);
   const stressed = stormScenario(snapshot, storm);
   const anomaly = seriesAnomaly(snapshot.series);
   const policy = insuranceBand(snapshot.risk.score);
@@ -111,7 +112,7 @@ export function AnalysisDeck({ snapshot }: AnalysisDeckProps) {
         <p className="text-[11px] uppercase tracking-[0.14em] text-mist">100-year stress, labeled scenario</p>
         <input className="mt-2 w-full" type="range" min={1} max={8} step={0.5} value={storm} onChange={(event) => setStorm(Number(event.target.value))} />
         <p className="mt-1 text-sm text-foam">
-          {storm.toFixed(1)}× discharge moves the core index from {snapshot.risk.score} to {stressed.total}. Depression bonuses are not reapplied.
+          {storm.toFixed(1)}× discharge scores {stressed.total} on the core terms ({baseline.total} at the measured flow). The live index is {snapshot.risk.score}. Depression bonuses are not reapplied.
         </p>
       </div>
       <p className="text-sm text-mist">{anomaly.note}</p>
