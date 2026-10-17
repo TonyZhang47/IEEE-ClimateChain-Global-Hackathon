@@ -22,7 +22,7 @@ export function Header({ stage, onNavigate, workspaceEnabled, children }: Header
           <Droplets size={18} />
         </span>
         <div>
-          <p className="text-sm font-semibold tracking-wide text-foam">HydroTrust AI</p>
+          <p className="text-sm font-semibold tracking-wide text-foam">Proof Of Flow</p>
           <p className="text-[11px] uppercase tracking-[0.16em] text-mist">IEEE ClimateChain · resilience track</p>
         </div>
       </div>

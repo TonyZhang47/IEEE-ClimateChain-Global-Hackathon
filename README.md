@@ -1,4 +1,4 @@
-# HydroTrust AI
+# Proof Of Flow
 
 Decentralized hydrological intelligence for the IEEE ClimateChain Global Hackathon. Search a place, read live stream telemetry, screen flood exposure and wetland carbon, and keep a content-addressed record you can commit on-chain.
 

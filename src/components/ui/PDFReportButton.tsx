@@ -43,7 +43,7 @@ export function PDFReportButton({ snapshot, advisory, commitment, verification }
     try {
       const blob = buildHydroReport({ snapshot, advisory, commitment, verification, mapImage, mapNote });
       const slug = snapshot.place.label.split(",")[0]?.toLowerCase().replace(/[^a-z0-9]+/g, "-") || "watershed";
-      downloadBlob(blob, `hydrotrust-${slug}.pdf`);
+      downloadBlob(blob, `proof-of-flow-${slug}.pdf`);
       setNote(mapNote);
     } catch (error) {
       setNote(error instanceof Error ? error.message : "The PDF could not be built.");

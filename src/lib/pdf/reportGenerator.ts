@@ -26,7 +26,7 @@ export function buildHydroReport(input: ReportInput): Blob {
     doc.setTextColor(231, 244, 241);
     doc.setFont("times", "bold");
     doc.setFontSize(16);
-    doc.text("HydroTrust AI", margin, 12);
+    doc.text("Proof Of Flow", margin, 12);
     doc.setFont("times", "normal");
     doc.setFontSize(9);
     doc.setTextColor(157, 180, 176);

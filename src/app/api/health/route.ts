@@ -14,7 +14,7 @@ export async function GET(): Promise<Response> {
     probe("USGS", "https://waterservices.usgs.gov/nwis/iv/?format=json&sites=05454500&parameterCd=00060"),
     probe("OpenFreeMap", "https://tiles.openfreemap.org/styles/dark"),
     probe("Nominatim", "https://nominatim.openstreetmap.org/status?format=json", {
-      "User-Agent": "HydroTrustAI/1.0 (IEEE ClimateChain hackathon)",
+      "User-Agent": "ProofOfFlow/1.0 (IEEE ClimateChain hackathon)",
       Accept: "application/json",
     }),
   ]);

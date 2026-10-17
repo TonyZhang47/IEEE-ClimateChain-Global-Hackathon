@@ -171,7 +171,7 @@ export function Web3VerifierPanel({ snapshot, onCommitment, onVerification }: We
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[11px] uppercase tracking-[0.16em] text-mist">Telemetry commitment</p>
-          <h3 className="mt-1 text-base text-foam">HydroTrustVerifier</h3>
+          <h3 className="mt-1 text-base text-foam">Proof Of Flow</h3>
         </div>
         {wallet.address ? (
           <button type="button" className="btn-ghost" onClick={wallet.disconnect}>

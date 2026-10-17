@@ -1,4 +1,4 @@
-"""Reactive worksheet for the HydroTrust screening equations.
+"""Reactive worksheet for the Proof Of Flow screening equations.
 
 Run with the standard library only:
 

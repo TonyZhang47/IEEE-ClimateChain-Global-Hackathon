@@ -28,7 +28,7 @@ export async function searchPlaces(query: string): Promise<PlaceSuggestion[]> {
     url.toString(),
     {
       headers: {
-        "User-Agent": "HydroTrustAI/1.0 (IEEE ClimateChain educational hydrology viewer)",
+        "User-Agent": "ProofOfFlow/1.0 (IEEE ClimateChain educational hydrology viewer)",
         "Accept-Language": "en",
       },
     },

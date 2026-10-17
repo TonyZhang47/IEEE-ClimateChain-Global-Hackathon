@@ -38,7 +38,7 @@ export async function fetchOverpassHydrography(
           headers: {
             Accept: "*/*",
             "Content-Type": "application/x-www-form-urlencoded;charset=UTF-8",
-            "User-Agent": "HydroTrustAI/1.0 (IEEE ClimateChain; educational hydrology viewer)",
+            "User-Agent": "ProofOfFlow/1.0 (IEEE ClimateChain; educational hydrology viewer)",
           },
           body: `data=${encodeURIComponent(query)}`,
         },
