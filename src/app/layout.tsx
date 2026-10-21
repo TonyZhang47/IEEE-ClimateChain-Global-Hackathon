@@ -10,11 +10,11 @@ const siteUrl = "https://ieee-climate-chain-global-hackathon.vercel.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: "Proof Of Flow",
-  description: "Decentralized hydrological intelligence for flood exposure, blue carbon, and verifiable stream telemetry.",
+  title: "Proof Of Flow | IEEE ClimateChain Resilience Track",
+  description: "Live watershed telemetry, a screening score, and a hash you can put on-chain.",
   openGraph: {
-    title: "Proof Of Flow",
-    description: "Flood exposure, wetland carbon, and a hash you can put on-chain.",
+    title: "Proof Of Flow | IEEE ClimateChain Resilience Track",
+    description: "Live watershed telemetry, a screening score, and a hash you can put on-chain.",
     url: siteUrl,
     siteName: "Proof Of Flow",
     type: "website",

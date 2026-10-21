@@ -6,6 +6,9 @@ export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
+const snapshotCache = new Map<string, { at: number; body: unknown }>();
+const SNAPSHOT_TTL_MS = 120_000;
+
 export async function GET(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const site = url.searchParams.get("site");
@@ -40,9 +43,20 @@ export async function GET(request: Request): Promise<Response> {
     longitude,
   };
 
+  const cacheKey = `${place.latitude.toFixed(3)},${place.longitude.toFixed(3)}`;
+  const cached = snapshotCache.get(cacheKey);
+  if (cached && Date.now() - cached.at < SNAPSHOT_TTL_MS) {
+    return Response.json(cached.body, { headers: { "x-proof-of-flow-cache": "hit" } });
+  }
+
   try {
     const snapshot = await buildHydroSnapshot(place);
-    return Response.json(snapshot);
+    snapshotCache.set(cacheKey, { at: Date.now(), body: snapshot });
+    if (snapshotCache.size > 24) {
+      const oldest = [...snapshotCache.entries()].sort((left, right) => left[1].at - right[1].at)[0];
+      if (oldest) snapshotCache.delete(oldest[0]);
+    }
+    return Response.json(snapshot, { headers: { "x-proof-of-flow-cache": "miss" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Hydrography assembly failed";
     return Response.json({ error: message }, { status: 502 });

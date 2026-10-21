@@ -9,15 +9,22 @@ interface ModalProps {
   onOpenChange: (open: boolean) => void;
   title: string;
   description?: string;
+  side?: boolean;
   children: ReactNode;
 }
 
-export function Modal({ open, onOpenChange, title, description, children }: ModalProps) {
+export function Modal({ open, onOpenChange, title, description, side = false, children }: ModalProps) {
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 z-40 bg-black/65 backdrop-blur-sm" />
-        <Dialog.Content className="glass fixed left-1/2 top-1/2 z-50 max-h-[85vh] w-[min(640px,calc(100%-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-3xl p-6">
+        <Dialog.Overlay className={side ? "fixed inset-0 z-40 bg-black/25" : "fixed inset-0 z-40 bg-black/65 backdrop-blur-sm"} />
+        <Dialog.Content
+          className={
+            side
+              ? "glass fixed inset-y-0 right-0 z-50 w-[min(420px,100%)] overflow-y-auto border-l border-white/10 p-6"
+              : "glass fixed left-1/2 top-1/2 z-50 max-h-[85vh] w-[min(640px,calc(100%-2rem))] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-3xl p-6"
+          }
+        >
           <Dialog.Title className="pr-8 text-xl text-foam">{title}</Dialog.Title>
           {description ? <Dialog.Description className="mt-2 text-sm text-mist">{description}</Dialog.Description> : null}
           <div className="mt-4">{children}</div>

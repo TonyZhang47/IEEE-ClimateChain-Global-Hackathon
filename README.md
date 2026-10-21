@@ -6,6 +6,22 @@ Decentralized hydrological intelligence for the IEEE ClimateChain Global Hackath
 
 **Source:** [github.com/TonyZhang47/IEEE-ClimateChain-Global-Hackathon](https://github.com/TonyZhang47/IEEE-ClimateChain-Global-Hackathon)
 
+## Devpost
+
+**Track.** Climate Data & Environmental Monitoring. Gauges, maps, and scores usually live apart, so the same place is hard to verify twice. Proof Of Flow binds them into one snapshot and rejects a second recording of that snapshot.
+
+**Problem.** Flood response and wetland carbon both depend on a river reading, a map, and a score that usually live in different systems. None of those pieces is replayable, so two organizations can cite the same place and still disagree.
+
+**Solution.** Proof Of Flow loads live USGS gauges where the network exists, National Hydrography Dataset or OpenStreetMap flowlines, and a local flood and blue-carbon screen. It canonicalizes that snapshot, addresses it as a raw CIDv1, and hashes it with `keccak256`. `HydroTrustVerifier` stores the hash, reverts on a duplicate, and mints capped dREC stewardship credits only when the flood index is 75 or below.
+
+**Users.** A municipal flood desk and a wetland-carbon project. Both open a city or a USGS site id, read the screen, export a PDF, and optionally commit the hash. There is no account.
+
+**Scale and adoption.** The data sources are public. The contract is a single EVM file with no admin mint. A second recording of the same snapshot reverts. Credits are capped at `(100 − risk) × 10` with a one-hour cooldown. Adoption is a link: search, read, export, connect a wallet.
+
+**Three-minute demo.** Open the live app, press **Begin the Iowa City review**, let the globe land, open a USGS pin, open **How this score is computed**, then stop on the chain desk and read the hash. Say that a duplicate hash reverts and that credits stay off when flood risk is high.
+
+**What is real.** USGS instantaneous values, mapped hydrography, the published equations, the CID, the keccak hash, and the Solidity rules. **What stays in the browser.** Votes, order notes, exploration marks, the parametric payout line, and the certificate preview. Chainlink is not connected. The flood index is not a FEMA map, and dREC is not a registered carbon credit.
+
 ## What it does
 
 1. **Globe.** A React Three Fiber earth with NASA day and night imagery, a cloud layer, and an atmosphere shader. Choosing a place flies the camera from orbit down to that coordinate.
@@ -150,16 +166,11 @@ src/lib/pdf                          Briefing export
 
 Next.js 14 (App Router), TypeScript, Tailwind CSS, Radix UI, Three.js and React Three Fiber, MapLibre GL, Turf.js, Recharts, Ethers v6, Hardhat, jsPDF.
 
-## Desk tools
+## What you see
 
-The workspace adds a layer panel, a scoring desk, and a chain desk on top of the original screen.
+The workspace is the product, in order: the map, the flood and blue-carbon screen, the gauge trace, a briefing from those numbers, and the hash commitment.
 
-- **Globe.** The day/night boundary follows an approximate UTC solar position. Clouds are two shells. Delta beacons, inclined satellite rings, a bright-star backdrop, and polar particles are drawn in the scene. Rain particles appear only when the active flood index is 60 or higher. The coordinate readout is a raycast on the globe.
-- **Map.** Terrain exaggeration, H3 cells, animated particles on the loaded flowlines, RainViewer radar, Open-Meteo rain and soil moisture, and NLDI basin / upstream / downstream traces are toggles. Buffer rings and the stage disk are geometric screens, not a hydraulic model. Walk rings assume 4 km/h in a straight line. The elevation profile is a USGS point sample every 200 m.
-- **Scoring desk.** Component chart, local briefing, watershed questions, a labeled storm multiplier, gauge z-score, and the same core equations as `notebooks/hydro_score.py`. Insurance, restoration, and property figures are worksheets. The exposure index does not include census data. Headings can switch language; the measured narrative stays in English.
-- **Chain desk.** Wallet switching uses EIP-1193 and EIP-6963. Gas estimates and signatures require a connected wallet and a deployed contract. Votes, order notes, and exploration marks stay in `localStorage`. The parametric line does not send USDC. The certificate is a preview, not an NFT. The contract source shown is the file in this repository.
-
-`Ctrl/Cmd+K` opens the command palette. Arrow keys pan the map, `+/-` zoom, space recenters, and `M` toggles hydrography. Sound is off until the header button is pressed.
+The map shows live USGS pins and mapped flowlines. Hydrography and wetlands can be toggled. The commitment panel prepares the CID and keccak hash, then asks a connected wallet before anything is written. A duplicate hash reverts in the contract.
 
 ## Limits
 

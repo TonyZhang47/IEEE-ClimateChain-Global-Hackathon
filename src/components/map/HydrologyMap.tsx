@@ -201,7 +201,10 @@ export function HydrologyMap({
           {sourceLabel}
         </span>
         <span className="pointer-events-auto rounded-full border border-line bg-abyss/80 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-aqua backdrop-blur">
-          Dash moves downstream
+          Dashed lines follow mapped flow
+        </span>
+        <span className="pointer-events-auto rounded-full border border-aqua/50 bg-abyss/80 px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-foam backdrop-blur">
+          Solid pins are live USGS gauges
         </span>
       </div>
       <div className="absolute bottom-8 right-3 flex flex-col gap-2">

@@ -119,6 +119,11 @@ input:focus-visible {
   text-transform: uppercase;
 }
 
+.gauge-pin[data-live="no"] {
+  border-style: dashed;
+  opacity: 0.75;
+}
+
 .maplibregl-popup-content {
   background: #0c1c24;
   color: #e7f4f1;

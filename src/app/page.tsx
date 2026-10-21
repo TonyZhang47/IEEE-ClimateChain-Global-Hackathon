@@ -5,14 +5,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { AdvisoryReport, GaugeReading, HydroSnapshot, PlaceSuggestion } from "@/types/hydro";
 import type { PreparedCommitment, VerificationRecord } from "@/types/web3";
 import { AIInsightPanel } from "@/components/dashboard/AIInsightPanel";
-import { AnalysisDeck } from "@/components/dashboard/AnalysisDeck";
-import { ChainStudio } from "@/components/dashboard/ChainStudio";
 import { RiskMetricsCard } from "@/components/dashboard/RiskMetricsCard";
 import { TelemetryChart } from "@/components/dashboard/TelemetryChart";
 import { Web3VerifierPanel } from "@/components/dashboard/Web3VerifierPanel";
-import { CommandPalette, DemoVideo, HealthFooter, Soundscape, ToastHost, Tour } from "@/components/experience/Chrome";
+import { HealthFooter, ToastHost } from "@/components/experience/Chrome";
 import { ErrorBoundary } from "@/components/experience/ErrorBoundary";
 import { GaugeDetail } from "@/components/map/StreamGaugeLayer";
+import { ImpactCard, JudgePanel } from "@/components/experience/JudgePanel";
 import { Header } from "@/components/ui/Header";
 import { Modal } from "@/components/ui/Modal";
 import { PDFReportButton } from "@/components/ui/PDFReportButton";
@@ -22,12 +21,12 @@ import { EXAMPLE_PLACES } from "@/lib/utils";
 
 const GlobeViewer = dynamic(() => import("@/components/3d/GlobeViewer").then((mod) => mod.GlobeViewer), {
   ssr: false,
-  loading: () => <div className="grid h-full place-items-center text-sm text-mist">Raising the globe…</div>,
+  loading: () => <div className="grid h-full place-items-center"><div className="skeleton h-40 w-40 rounded-full" /></div>,
 });
 
 const HydrologyMap = dynamic(() => import("@/components/map/HydrologyMap").then((mod) => mod.HydrologyMap), {
   ssr: false,
-  loading: () => <div className="grid h-full place-items-center text-sm text-mist">Opening the watershed…</div>,
+  loading: () => <div className="grid h-full place-items-center px-8"><div className="skeleton h-48 w-full" /></div>,
 });
 
 type Stage = "orbit" | "descent" | "workspace";
@@ -47,10 +46,7 @@ export default function HomePage() {
   const [commitment, setCommitment] = useState<PreparedCommitment | null>(null);
   const [verification, setVerification] = useState<VerificationRecord | null>(null);
   const [gauge, setGauge] = useState<GaugeReading | null>(null);
-  const [paletteOpen, setPaletteOpen] = useState(false);
-  const [tourOpen, setTourOpen] = useState(false);
-  const [sound, setSound] = useState(false);
-  const [cinema, setCinema] = useState(false);
+  const [pitchOpen, setPitchOpen] = useState(false);
   const booted = useRef(false);
 
   const loadPlace = useCallback(async (next: PlaceSuggestion) => {
@@ -97,7 +93,6 @@ export default function HomePage() {
     if (Number.isFinite(latitude) && Number.isFinite(longitude) && label.length > 1) {
       void loadPlace({ id: "link", label, latitude, longitude });
     }
-    if (window.localStorage.getItem("hydrotrust.tour") !== "1") setTourOpen(true);
     if (window.localStorage.getItem("hydrotrust.theme") === "light") {
       document.documentElement.dataset.theme = "light";
     }
@@ -118,29 +113,9 @@ export default function HomePage() {
     return () => window.clearTimeout(timer);
   }, [stage, place]);
 
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
-        event.preventDefault();
-        setPaletteOpen(true);
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
   const onArrival = useCallback(() => {
     setStage((current) => (current === "descent" ? "workspace" : current));
   }, []);
-
-  const onCommand = (action: "orbit" | "workspace" | "fullscreen" | "tour" | "sound" | "theme") => {
-    if (action === "orbit") setStage("orbit");
-    if (action === "workspace" && place) setStage("workspace");
-    if (action === "fullscreen") toggleCinema(setCinema);
-    if (action === "tour") setTourOpen(true);
-    if (action === "sound") setSound((current) => !current);
-    if (action === "theme") toggleTheme();
-  };
 
   const locate = () => {
     if (!navigator.geolocation) {
@@ -162,24 +137,10 @@ export default function HomePage() {
   };
 
   const primary = snapshot?.gauges.find((item) => item.siteId === snapshot.primarySiteId) ?? snapshot?.gauges[0] ?? null;
-  const tools = (
-    <>
-      <button type="button" className="btn-ghost" onClick={() => setPaletteOpen(true)}>Search</button>
-      <button type="button" className={sound ? "btn-primary" : "btn-ghost"} onClick={() => setSound((current) => !current)}>
-        {sound ? "Sound on" : "Sound"}
-      </button>
-      <button type="button" className="btn-ghost" onClick={toggleTheme}>Theme</button>
-      <button type="button" className="btn-ghost" onClick={() => toggleCinema(setCinema)}>{cinema ? "Panels" : "Cinema"}</button>
-      <DemoVideo />
-    </>
-  );
 
   return (
     <main className="min-h-screen">
-      <Soundscape enabled={sound} />
       <ToastHost />
-      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} onSelect={(next) => void loadPlace(next)} onAction={onCommand} />
-      <Tour open={tourOpen} onClose={() => setTourOpen(false)} />
       {stage !== "workspace" ? (
         <section className="relative h-screen overflow-hidden">
           <GlobeViewer
@@ -196,19 +157,20 @@ export default function HomePage() {
                   if (next === "workspace" && place) setStage("workspace");
                   if (next === "orbit") setStage("orbit");
                 }}
-              >
-                {tools}
-              </Header>
+              />
             </div>
             <div className="pointer-events-none flex flex-1 items-end px-4 pb-10 sm:px-8">
               <div className="pointer-events-auto max-w-xl">
-                <p className="text-[11px] uppercase tracking-[0.22em] text-aqua">Climate resilience screen</p>
+                <p className="text-[11px] uppercase tracking-[0.22em] text-aqua">Climate Data & Environmental Monitoring</p>
                 <h1 className="mt-3 max-w-lg text-4xl leading-tight text-foam sm:text-5xl">
                   Read the watershed before the water rises.
                 </h1>
                 <p className="mt-3 max-w-lg text-sm leading-6 text-mist">
-                  Live USGS gauges where the network exists, OpenStreetMap hydrography elsewhere, and a local score when no model key is configured. The chain stores a hash, not a guess.
+                  A flood desk and a wetland project can cite the same river and still disagree. Proof Of Flow binds the live gauge, the mapped streams, and the screening score into one snapshot. The chain stores that hash, and it rejects the hash a second time.
                 </p>
+                <button type="button" className="btn-primary mt-4" onClick={() => void loadPlace(EXAMPLE_PLACES[0])}>
+                  Open Iowa City
+                </button>
                 <div className="mt-5">
                   <SearchBar onSelect={(next) => void loadPlace(next)} initialLabel={place?.label ?? ""} />
                 </div>
@@ -238,9 +200,7 @@ export default function HomePage() {
             onNavigate={(next) => {
               if (next === "orbit") setStage("orbit");
             }}
-          >
-            {tools}
-          </Header>
+          />
           <div className="flex flex-wrap items-center gap-2 px-4 pb-3 sm:px-6">
             <div className="min-w-[240px] flex-1">
               <SearchBar variant="compact" onSelect={(next) => void loadPlace(next)} initialLabel={place?.label ?? ""} />
@@ -257,7 +217,7 @@ export default function HomePage() {
               Copy link
             </button>
           </div>
-          <div className={`grid min-h-0 flex-1 grid-cols-1 ${cinema ? "" : "lg:grid-cols-[minmax(0,1.55fr)_minmax(340px,0.9fr)]"}`}>
+          <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1.55fr)_minmax(340px,0.9fr)]">
             <div id="hydro-map-canvas" className="relative min-h-[420px] border-y border-line lg:border-y-0 lg:border-r">
               {place ? (
                 <ErrorBoundary label="Map">
@@ -276,8 +236,7 @@ export default function HomePage() {
                 </ErrorBoundary>
               ) : null}
             </div>
-            {cinema ? null : (
-              <aside className="min-h-0 space-y-3 overflow-y-auto px-4 py-4 sm:px-5">
+            <aside id="dashboard" className="min-h-0 space-y-3 overflow-y-auto px-4 py-4 sm:px-5">
                 {loading ? (
                   <>
                     <div className="skeleton" />
@@ -298,19 +257,20 @@ export default function HomePage() {
                 {offline ? <p className="text-xs text-amber">Offline copy. Refresh when the network is back.</p> : null}
                 {snapshot ? (
                   <ErrorBoundary label="Desk">
+                    <ImpactCard />
                     <RiskMetricsCard risk={snapshot.risk} blueCarbon={snapshot.blueCarbon} />
                     <TelemetryChart
                       series={snapshot.series}
                       siteLabel={primary ? `${primary.siteName} · ${primary.siteId}` : null}
                     />
-                    <AnalysisDeck snapshot={snapshot} />
                     <AIInsightPanel snapshot={snapshot} onReport={setAdvisory} />
-                    <Web3VerifierPanel
-                      snapshot={snapshot}
-                      onCommitment={setCommitment}
-                      onVerification={setVerification}
-                    />
-                    <ChainStudio snapshot={snapshot} commitment={commitment} />
+                    <div id="chain-desk">
+                      <Web3VerifierPanel
+                        snapshot={snapshot}
+                        onCommitment={setCommitment}
+                        onVerification={setVerification}
+                      />
+                    </div>
                     {snapshot.notices.length > 0 ? (
                       <details className="rounded-2xl border border-line px-4 py-3 text-sm text-mist">
                         <summary className="cursor-pointer text-foam">Data notes</summary>
@@ -330,8 +290,7 @@ export default function HomePage() {
                     />
                   </ErrorBoundary>
                 ) : null}
-              </aside>
-            )}
+            </aside>
           </div>
           <HealthFooter />
         </section>
@@ -341,29 +300,29 @@ export default function HomePage() {
         onOpenChange={(open) => {
           if (!open) setGauge(null);
         }}
+        side
         title={gauge ? `USGS ${gauge.siteId}` : "Gauge"}
-        description="Instantaneous values from the USGS water services."
+        description="Instantaneous values from the USGS water services. The sparkline uses the period you select."
       >
-        {gauge ? <GaugeDetail gauge={gauge} /> : null}
+        {gauge ? (
+          <GaugeDetail
+            gauge={gauge}
+            riskScore={snapshot?.risk.score ?? null}
+            onAnchor={() => {
+              setGauge(null);
+              document.getElementById("chain-desk")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+          />
+        ) : null}
       </Modal>
+      <Modal open={pitchOpen} onOpenChange={setPitchOpen} title="How Proof Of Flow works" description="One snapshot. One hash.">
+        <JudgePanel onBegin={() => { setPitchOpen(false); void loadPlace(EXAMPLE_PLACES[0]); }} />
+      </Modal>
+      <button type="button" className="btn-ghost fixed bottom-5 right-4 z-30" onClick={() => setPitchOpen(true)}>
+        Judge view
+      </button>
     </main>
   );
-}
-
-function toggleTheme(): void {
-  const next = document.documentElement.dataset.theme === "light" ? "dark" : "light";
-  if (next === "light") document.documentElement.dataset.theme = "light";
-  else delete document.documentElement.dataset.theme;
-  window.localStorage.setItem("hydrotrust.theme", next);
-}
-
-function toggleCinema(setCinema: (value: (current: boolean) => boolean) => void): void {
-  setCinema((current) => !current);
-  if (document.fullscreenElement) {
-    void document.exitFullscreen();
-    return;
-  }
-  void document.documentElement.requestFullscreen().catch(() => undefined);
 }
 
 function cacheSnapshot(snapshot: HydroSnapshot): void {

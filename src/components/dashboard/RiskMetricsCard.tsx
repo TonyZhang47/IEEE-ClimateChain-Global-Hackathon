@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { BlueCarbonRating, FloodRiskScore } from "@/types/hydro";
+import { EQUATIONS } from "@/lib/experience/analysis";
 import { formatNumber } from "@/lib/utils";
 
 interface RiskMetricsCardProps {
@@ -39,6 +40,14 @@ export function RiskMetricsCard({ risk, blueCarbon }: RiskMetricsCardProps) {
           value={risk.nearestStreamMeters === null ? "—" : `${formatNumber(risk.nearestStreamMeters, 0)} m`}
         />
       </dl>
+      <details id="score-math" className="mt-4 rounded-xl border border-line px-3 py-2 text-sm text-mist">
+        <summary className="cursor-pointer text-foam">How this score is computed</summary>
+        <div className="mt-3 space-y-2">
+          {EQUATIONS.map((line) => (
+            <p key={line}>{line}</p>
+          ))}
+        </div>
+      </details>
       <ul className="mt-4 space-y-2 text-sm text-mist">
         {risk.rationale.map((line) => (
           <li key={line}>{line}</li>

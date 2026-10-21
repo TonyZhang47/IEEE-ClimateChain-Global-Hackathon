@@ -39,6 +39,23 @@ export async function fetchGaugesInBBox(
     .slice(0, 40);
 }
 
+export async function fetchSitePlace(siteId: string): Promise<{ id: string; label: string; latitude: number; longitude: number; kind: string } | null> {
+  const url = new URL(USGS_IV);
+  url.searchParams.set("format", "json");
+  url.searchParams.set("sites", siteId);
+  url.searchParams.set("parameterCd", "00060,00065");
+  const payload = await fetchJson(url.toString(), {}, 15000);
+  const reading = parseGaugeSeries(payload, 0, 0)[0];
+  if (!reading) return null;
+  return {
+    id: reading.siteId,
+    label: `${reading.siteName} (USGS ${reading.siteId})`,
+    latitude: reading.latitude,
+    longitude: reading.longitude,
+    kind: "gauge",
+  };
+}
+
 export type GaugePeriod = "P1D" | "P7D" | "P30D" | "P365D";
 
 export async function fetchGaugeSeries(siteId: string, period: GaugePeriod = "P7D"): Promise<GaugeSeriesPoint[]> {
@@ -69,7 +86,7 @@ export async function fetchNhdFlowlines(
   url.searchParams.set("returnGeometry", "true");
   url.searchParams.set("resultRecordCount", "250");
 
-  const payload = await fetchJson(url.toString(), {}, 35000);
+  const payload = await fetchJson(url.toString(), {}, 12000);
   return nhdToLineCollection(payload);
 }
 

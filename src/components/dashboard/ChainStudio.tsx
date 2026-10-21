@@ -185,37 +185,14 @@ export function ChainStudio({ snapshot, commitment }: ChainStudioProps) {
           Recovered {recovered}. {recovered && wallet.address && recovered.toLowerCase() === wallet.address.toLowerCase() ? "It matches the connected account." : "Compare it with the signing account."}
         </p>
       ) : null}
-      <div className="rounded-xl border border-line p-3">
-        <p className="text-foam">Parametric screen</p>
-        <p className="mt-1">
-          {trigger
-            ? `A policy written at 20 ft or 20,000 ft³/s would show about ${Math.max(payout, 0)} illustrative units. No USDC is sent.`
-            : "The active gauge is under the 20 ft / 20,000 ft³/s illustration threshold. No payout is simulated."}
-        </p>
-      </div>
       <div className="grid gap-2 sm:grid-cols-3">
         <Mini title="Gauge API" body="USGS" />
         <Mini title="This server" body="Hash + CID" />
         <Mini title="Oracle" body="Chainlink is not connected" />
       </div>
-      <div className="rounded-xl border border-line p-3">
-        <p className="text-foam">Local vote tally</p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          <button type="button" className="btn-ghost" onClick={() => vote("wetland")}>Fund wetland edge ({votes.wetland ?? 0})</button>
-          <button type="button" className="btn-ghost" onClick={() => vote("gauge")}>Fund gauge watch ({votes.gauge ?? 0})</button>
-        </div>
-      </div>
-      <div className="rounded-xl border border-line p-3">
-        <p className="text-foam">Demo order book</p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          <button type="button" className="btn-ghost" onClick={() => takeOrder("bid-1")}>Note 10 credit bid</button>
-          <button type="button" className="btn-ghost" onClick={() => takeOrder("ask-1")}>Note 10 credit ask</button>
-        </div>
-        <p className="mt-2">{book.length === 0 ? "No local notes yet." : `${book.length} local notes. Nothing is listed on a market.`}</p>
-      </div>
       <div>
         <p className="text-foam">Confirmed records in this browser</p>
-        {confirmed.length === 0 ? <p className="mt-1">No confirmed mint or record yet, so there is no leaderboard to rank.</p> : (
+        {confirmed.length === 0 ? <p className="mt-1">A row appears here only after a wallet confirms a record or a mint.</p> : (
           <ul className="mt-2 space-y-1">
             {confirmed.slice(0, 5).map((item) => (
               <li key={item.id}>{item.location.split(",")[0]} · score {item.riskScore} · {item.txHash ? shortHash(item.txHash) : "no tx"}</li>
@@ -223,20 +200,48 @@ export function ChainStudio({ snapshot, commitment }: ChainStudioProps) {
           </ul>
         )}
       </div>
-      <div>
-        <p className="text-foam">Exploration marks</p>
-        <p className="mt-1">{badges.length === 0 ? "Open a watershed scored 60 or higher to store a local mark." : badges.join(" · ")}</p>
-      </div>
       <ul className="space-y-1 text-xs">
-        <li>The contract checks telemetry before minting, caps credits with the flood index, and enforces a one-hour cooldown.</li>
-        <li>It does not import OpenZeppelin. Do not read this panel as an audit.</li>
+        <li>The same keccak hash cannot be stored twice. A second record of that snapshot reverts.</li>
+        <li>Minting requires a prior record, a flood index of 75 or below, a cap of (100 − risk) × 10, and a one-hour cooldown.</li>
+        <li>The contract does not import OpenZeppelin. This panel is not an audit.</li>
       </ul>
-      <div className="certificate rounded-2xl border border-aqua/40 p-4">
-        <p className="text-[11px] uppercase tracking-[0.16em] text-aqua">Certificate preview</p>
-        <p className="mt-2 text-lg text-foam">{snapshot.place.label}</p>
-        <p className="mt-1 font-mono text-xs">Flood {snapshot.risk.score} · carbon {snapshot.blueCarbon.score}</p>
-        <p className="mt-2 text-xs">Preview only. Nothing is minted as an NFT.</p>
-      </div>
+      <details className="rounded-xl border border-line p-3">
+        <summary className="cursor-pointer text-foam">Illustrations kept off the chain</summary>
+        <p className="mt-2 text-xs">The payout screen, votes, order notes, exploration marks, and the certificate stay in this browser. None of them is a transaction.</p>
+        <div className="mt-3 rounded-xl border border-line p-3">
+          <p className="text-foam">Parametric screen</p>
+          <p className="mt-1">
+            {trigger
+              ? `A policy written at 20 ft or 20,000 ft³/s would show about ${Math.max(payout, 0)} illustrative units. No USDC is sent.`
+              : "The active gauge is under the 20 ft / 20,000 ft³/s illustration threshold. No payout is simulated."}
+          </p>
+        </div>
+        <div className="mt-3 rounded-xl border border-line p-3">
+          <p className="text-foam">Local vote tally</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button type="button" className="btn-ghost" onClick={() => vote("wetland")}>Fund wetland edge ({votes.wetland ?? 0})</button>
+            <button type="button" className="btn-ghost" onClick={() => vote("gauge")}>Fund gauge watch ({votes.gauge ?? 0})</button>
+          </div>
+        </div>
+        <div className="mt-3 rounded-xl border border-line p-3">
+          <p className="text-foam">Demo order book</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button type="button" className="btn-ghost" onClick={() => takeOrder("bid-1")}>Note 10 credit bid</button>
+            <button type="button" className="btn-ghost" onClick={() => takeOrder("ask-1")}>Note 10 credit ask</button>
+          </div>
+          <p className="mt-2">{book.length === 0 ? "No local notes yet." : `${book.length} local notes. Nothing is listed on a market.`}</p>
+        </div>
+        <div className="mt-3">
+          <p className="text-foam">Exploration marks</p>
+          <p className="mt-1">{badges.length === 0 ? "Open a watershed scored 60 or higher to store a local mark." : badges.join(" · ")}</p>
+        </div>
+        <div className="certificate mt-3 rounded-2xl border border-aqua/40 p-4">
+          <p className="text-[11px] uppercase tracking-[0.16em] text-aqua">Certificate preview</p>
+          <p className="mt-2 text-lg text-foam">{snapshot.place.label}</p>
+          <p className="mt-1 font-mono text-xs">Flood {snapshot.risk.score} · carbon {snapshot.blueCarbon.score}</p>
+          <p className="mt-2 text-xs">Preview only. Nothing is minted as an NFT.</p>
+        </div>
+      </details>
       <details>
         <summary className="cursor-pointer text-foam">Contract source in this repository</summary>
         <pre className="mt-3 max-h-64 overflow-auto rounded-xl bg-black/40 p-3 font-mono text-[11px] text-foam">{source ?? "Loading source…"}</pre>

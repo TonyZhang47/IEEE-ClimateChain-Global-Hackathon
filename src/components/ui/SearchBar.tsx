@@ -93,7 +93,7 @@ export function SearchBar({ onSelect, variant = "hero", initialLabel = "" }: Sea
         <input
           id={`${listId}-input`}
           value={query}
-          placeholder="Search a city, a river near a place, or latitude, longitude"
+          placeholder="City, river, coordinates, or a USGS site id"
           className="w-full bg-transparent text-sm text-foam outline-none placeholder:text-mist"
           role="combobox"
           aria-expanded={open}

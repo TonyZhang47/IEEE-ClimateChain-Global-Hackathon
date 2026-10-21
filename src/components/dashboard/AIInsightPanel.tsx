@@ -67,6 +67,9 @@ export function AIInsightPanel({ snapshot, onReport }: AIInsightPanelProps) {
           <h3 className="text-lg leading-snug text-foam">{report.headline}</h3>
           <p className="text-sm leading-6 text-mist">{report.summary}</p>
           {report.notice ? <p className="text-xs text-amber">{report.notice}</p> : null}
+          {report.confidence === "model" ? null : (
+            <p className="text-xs text-mist">This briefing is computed from the snapshot numbers, so the same inputs produce the same text.</p>
+          )}
           <ActionList title="Community" items={report.communityActions} />
           <ActionList title="Policy" items={report.policyActions} />
         </div>

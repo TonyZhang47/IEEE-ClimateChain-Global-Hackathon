@@ -28,6 +28,7 @@ export function StreamGaugeLayer({ map, gauges, onSelect }: StreamGaugeLayerProp
         button.type = "button";
         button.className = "gauge-pin";
         button.dataset.flow = pulseBand(gauge.dischargeCfs);
+        button.dataset.live = gauge.dischargeCfs !== null || gauge.gageHeightFt !== null ? "yes" : "no";
         button.title = gauge.siteName;
         const value = document.createElement("strong");
         value.textContent =
@@ -66,7 +67,15 @@ const PERIODS = [
   { id: "P365D", label: "1y" },
 ] as const;
 
-export function GaugeDetail({ gauge }: { gauge: GaugeReading }) {
+export function GaugeDetail({
+  gauge,
+  riskScore = null,
+  onAnchor,
+}: {
+  gauge: GaugeReading;
+  riskScore?: number | null;
+  onAnchor?: () => void;
+}) {
   const [series, setSeries] = useState<GaugeSeriesPoint[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [period, setPeriod] = useState<(typeof PERIODS)[number]["id"]>("P7D");
@@ -92,6 +101,12 @@ export function GaugeDetail({ gauge }: { gauge: GaugeReading }) {
   return (
     <div className="space-y-3 text-sm">
       <p className="text-mist">{gauge.siteName}</p>
+      <p className="text-xs text-mist">
+        {riskScore === null
+          ? "The screening index belongs to the searched point, not to this gauge by itself."
+          : `Watershed screen ${riskScore}/100. The instantaneous feed does not include an NWS flood category, so this pin is not colored as flood stage.`}
+      </p>
+      {series && series.some((point) => point.dischargeCfs !== null) ? <Sparkline series={series} /> : null}
       <dl className="grid grid-cols-2 gap-3">
         <Metric label="Discharge" value={gauge.dischargeCfs === null ? "—" : `${formatNumber(gauge.dischargeCfs, 0)} ft³/s`} />
         <Metric label="Stage" value={gauge.gageHeightFt === null ? "—" : `${formatNumber(gauge.gageHeightFt, 2)} ft`} />
@@ -118,6 +133,14 @@ export function GaugeDetail({ gauge }: { gauge: GaugeReading }) {
       >
         Open USGS monitoring location
       </a>
+      {onAnchor ? (
+        <button type="button" className="btn-primary" onClick={onAnchor}>
+          Anchor hash to chain
+        </button>
+      ) : null}
+      <p className="text-xs text-mist">
+        Anchoring writes the watershed snapshot hash from the chain desk. It does not send a second transaction from this drawer.
+      </p>
     </div>
   );
 }
@@ -128,6 +151,25 @@ function Metric({ label, value }: { label: string; value: string }) {
       <dt className="text-[11px] uppercase tracking-[0.14em] text-mist">{label}</dt>
       <dd className="mt-1 font-mono text-foam">{value}</dd>
     </div>
+  );
+}
+
+function Sparkline({ series }: { series: GaugeSeriesPoint[] }) {
+  const values = series.map((point) => point.dischargeCfs).filter((value): value is number => value !== null);
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = Math.max(1, max - min);
+  const points = values
+    .map((value, index) => {
+      const x = (index / Math.max(1, values.length - 1)) * 280;
+      const y = 48 - ((value - min) / span) * 40;
+      return `${x},${y}`;
+    })
+    .join(" ");
+  return (
+    <svg viewBox="0 0 280 56" className="w-full" role="img" aria-label="Discharge trend for the selected period">
+      <polyline fill="none" stroke="#3ddec0" strokeWidth="2" points={points} />
+    </svg>
   );
 }
 
